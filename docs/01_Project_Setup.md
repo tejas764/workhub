@@ -4,7 +4,7 @@
 
 Project Name: WorkHub AI
 
-Project URL: qcrmqzkghcxrkmgatuya
+Project URL:rihcmhsizsfhzygqlxgt
 
 Database Region: ap-south-1
 
