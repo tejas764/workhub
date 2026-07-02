@@ -1,0 +1,2879 @@
+import { useState, useRef, useEffect } from "react";
+import {
+  LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
+  BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
+  ChevronLeft, ChevronRight, Search, Plus, Filter, Download,
+  Upload, Eye, Trash2, MoreHorizontal, X, Menu, AlertTriangle,
+  Lock, Calendar, Clock, Pin, Paperclip, MessageSquare,
+  ChevronDown, LogOut, User, Shield, TrendingUp, Activity,
+  BookOpen, Send, Bot, FileSearch, ExternalLink, SortAsc,
+  AlertCircle, Info, CheckCircle, GraduationCap, Mail, Phone,
+  MapPin, Key, EyeOff, ArrowRight, Tag, UserCheck, Sparkles,
+  FileUp, File, Briefcase, Copy, Star, Globe, ChevronUp,
+  Hash, RefreshCw, Home, Pencil, List, Target, Zap, Award,
+  SlidersHorizontal, LayoutGrid, Layers, Inbox, Archive,
+  FolderOpen, Link, AtSign, BarChart, PieChart
+} from "lucide-react";
+import {
+  BarChart as RBar, Bar, LineChart as RLine, Line,
+  PieChart as RPie, Pie, Cell, AreaChart as RArea, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from "recharts";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type Role = "hod" | "coordinator" | "faculty";
+type AppPage =
+  | "dashboard" | "faculty" | "announcements" | "meetings"
+  | "documents" | "tasks" | "ai-knowledge" | "reports"
+  | "department" | "notifications" | "profile" | "settings"
+  | "help" | "e404" | "e403" | "e500";
+type AuthView = "login" | "forgot" | "reset";
+
+interface NavItem { id: AppPage; label: string; icon: React.FC<{ size?: number; className?: string }> }
+interface FacultyMember {
+  id: number; name: string; email: string; phone: string;
+  designation: string; department: string; role: string;
+  status: "Active" | "On Leave" | "Inactive"; joined: string;
+}
+interface Announcement {
+  id: number; title: string; category: string; department: string;
+  postedBy: string; date: string; pinned: boolean; hasAttachment: boolean;
+  summary: string;
+}
+interface Meeting {
+  id: number; title: string; organizer: string; date: string;
+  time: string; participants: number; status: "Upcoming" | "Completed" | "Cancelled";
+  department: string; location: string;
+}
+interface DocItem {
+  id: number; title: string; category: string; uploadedBy: string;
+  date: string; type: "pdf" | "doc" | "xlsx" | "ppt" | "img"; size: string;
+  hasSummary: boolean;
+}
+interface TaskItem {
+  id: number; title: string; assignee: string; priority: "High" | "Medium" | "Low";
+  status: "In Progress" | "Pending" | "Completed" | "Overdue";
+  dueDate: string; department: string; description: string;
+}
+interface NotifItem {
+  id: number; type: "announcement" | "task" | "meeting" | "document" | "ai";
+  title: string; body: string; time: string; read: boolean;
+}
+
+// ─── Navigation Config ─────────────────────────────────────────────────────
+const NAV_CONFIG: Record<Role, NavItem[]> = {
+  hod: [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "faculty", label: "Faculty", icon: Users },
+    { id: "announcements", label: "Announcements", icon: Megaphone },
+    { id: "meetings", label: "Meetings", icon: Video },
+    { id: "documents", label: "Documents", icon: FileText },
+    { id: "tasks", label: "Tasks", icon: CheckSquare },
+    { id: "ai-knowledge", label: "AI Knowledge", icon: Brain },
+    { id: "reports", label: "Reports", icon: BarChart2 },
+    { id: "department", label: "Department", icon: Building2 },
+  ],
+  coordinator: [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "announcements", label: "Announcements", icon: Megaphone },
+    { id: "meetings", label: "Meetings", icon: Video },
+    { id: "documents", label: "Documents", icon: FileText },
+    { id: "tasks", label: "Tasks", icon: CheckSquare },
+    { id: "ai-knowledge", label: "AI Knowledge", icon: Brain },
+    { id: "department", label: "Department", icon: Building2 },
+    { id: "faculty", label: "Faculty Directory", icon: Users },
+  ],
+  faculty: [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "announcements", label: "Announcements", icon: Megaphone },
+    { id: "meetings", label: "Meetings", icon: Video },
+    { id: "documents", label: "Documents", icon: FileText },
+    { id: "tasks", label: "My Tasks", icon: CheckSquare },
+    { id: "ai-knowledge", label: "AI Knowledge", icon: Brain },
+  ],
+};
+
+const BOTTOM_NAV: NavItem[] = [
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "profile", label: "Profile", icon: User },
+  { id: "settings", label: "Settings", icon: Settings },
+  { id: "help", label: "Help", icon: HelpCircle },
+];
+
+const ROLE_LABELS: Record<Role, string> = {
+  hod: "Head of Department",
+  coordinator: "Dept. Coordinator",
+  faculty: "Faculty Member",
+};
+
+const BREADCRUMBS: Record<AppPage, string[]> = {
+  dashboard: ["Home", "Dashboard"],
+  faculty: ["Home", "Faculty"],
+  announcements: ["Home", "Announcements"],
+  meetings: ["Home", "Meetings"],
+  documents: ["Home", "Documents"],
+  tasks: ["Home", "Tasks"],
+  "ai-knowledge": ["Home", "AI Knowledge"],
+  reports: ["Home", "Reports"],
+  department: ["Home", "Department"],
+  notifications: ["Home", "Notifications"],
+  profile: ["Home", "Profile"],
+  settings: ["Home", "Settings"],
+  help: ["Home", "Help & Support"],
+  e404: ["Home", "404"],
+  e403: ["Home", "403"],
+  e500: ["Home", "500"],
+};
+
+// ─── Mock Data ─────────────────────────────────────────────────────────────
+const FACULTY_DATA: FacultyMember[] = [
+  { id: 1, name: "Dr. Anita Sharma", email: "anita.sharma@college.edu", phone: "+91 98765 43210", designation: "Professor", department: "Computer Science", role: "HOD", status: "Active", joined: "2015-08-01" },
+  { id: 2, name: "Prof. Rajan Mehta", email: "rajan.mehta@college.edu", phone: "+91 87654 32109", designation: "Associate Professor", department: "Computer Science", role: "Coordinator", status: "Active", joined: "2017-07-15" },
+  { id: 3, name: "Dr. Priya Nair", email: "priya.nair@college.edu", phone: "+91 76543 21098", designation: "Assistant Professor", department: "Computer Science", role: "Faculty", status: "Active", joined: "2019-01-10" },
+  { id: 4, name: "Mr. Vikram Singh", email: "vikram.singh@college.edu", phone: "+91 65432 10987", designation: "Assistant Professor", department: "Computer Science", role: "Faculty", status: "On Leave", joined: "2020-06-01" },
+  { id: 5, name: "Dr. Sunita Patel", email: "sunita.patel@college.edu", phone: "+91 54321 09876", designation: "Associate Professor", department: "Electronics", role: "HOD", status: "Active", joined: "2013-09-15" },
+  { id: 6, name: "Prof. Kiran Desai", email: "kiran.desai@college.edu", phone: "+91 43210 98765", designation: "Professor", department: "Mathematics", role: "Faculty", status: "Active", joined: "2010-03-20" },
+  { id: 7, name: "Dr. Amit Verma", email: "amit.verma@college.edu", phone: "+91 32109 87654", designation: "Assistant Professor", department: "Physics", role: "Faculty", status: "Active", joined: "2021-08-01" },
+  { id: 8, name: "Ms. Deepa Krishnan", email: "deepa.krishnan@college.edu", phone: "+91 21098 76543", designation: "Lecturer", department: "Computer Science", role: "Faculty", status: "Active", joined: "2022-07-18" },
+  { id: 9, name: "Dr. Rohit Joshi", email: "rohit.joshi@college.edu", phone: "+91 10987 65432", designation: "Associate Professor", department: "Mechanical", role: "Coordinator", status: "Inactive", joined: "2016-01-05" },
+  { id: 10, name: "Prof. Meera Iyer", email: "meera.iyer@college.edu", phone: "+91 09876 54321", designation: "Professor", department: "Civil", role: "HOD", status: "Active", joined: "2008-06-12" },
+];
+
+const ANNOUNCEMENTS_DATA: Announcement[] = [
+  { id: 1, title: "Annual Academic Review Meeting — All HODs to Attend", category: "Academic", department: "All Departments", postedBy: "Dr. Anita Sharma", date: "2026-06-28", pinned: true, hasAttachment: true, summary: "AI summary: Mandatory attendance for all HODs. Agenda includes curriculum review and faculty performance metrics." },
+  { id: 2, title: "Semester End Examination Schedule Published", category: "Examination", department: "Computer Science", postedBy: "Prof. Rajan Mehta", date: "2026-06-25", pinned: false, hasAttachment: true, summary: "AI summary: End-semester exams scheduled from July 15–30. Hall tickets available from July 10." },
+  { id: 3, title: "New Faculty Onboarding — Orientation Program Details", category: "HR", department: "All Departments", postedBy: "Admin Office", date: "2026-06-22", pinned: false, hasAttachment: false, summary: "AI summary: New faculty orientation on July 5th at 10 AM. HR documentation submission deadline July 3rd." },
+  { id: 4, title: "Research Grant Application — Last Date July 15th", category: "Research", department: "All Departments", postedBy: "Dr. Anita Sharma", date: "2026-06-20", pinned: true, hasAttachment: true, summary: "AI summary: SERB research grant applications open. Eligible faculty must submit proposals via the research portal." },
+  { id: 5, title: "Lab Equipment Calibration — CS Lab Closed July 1–3", category: "Facilities", department: "Computer Science", postedBy: "Lab Coordinator", date: "2026-06-18", pinned: false, hasAttachment: false, summary: "AI summary: CS lab maintenance scheduled. Alternative lab arrangements have been made for ongoing projects." },
+  { id: 6, title: "Student Performance Review — Q2 Reports Due", category: "Academic", department: "Computer Science", postedBy: "Prof. Rajan Mehta", date: "2026-06-15", pinned: false, hasAttachment: false, summary: "AI summary: Q2 student performance reports must be submitted by June 30. Format guidelines attached." },
+];
+
+const MEETINGS_DATA: Meeting[] = [
+  { id: 1, title: "Department Faculty Meeting — July Curriculum Planning", organizer: "Dr. Anita Sharma", date: "2026-07-03", time: "10:00 AM", participants: 14, status: "Upcoming", department: "Computer Science", location: "Conference Room A" },
+  { id: 2, title: "Research Committee Review — Q2 Progress", organizer: "Prof. Meera Iyer", date: "2026-07-05", time: "2:00 PM", participants: 8, status: "Upcoming", department: "All Departments", location: "Board Room" },
+  { id: 3, title: "Student Grievance Redressal Meeting", organizer: "Prof. Rajan Mehta", date: "2026-07-07", time: "11:00 AM", participants: 5, status: "Upcoming", department: "Computer Science", location: "HOD Office" },
+  { id: 4, title: "Annual Budget Review — FY 2026–27", organizer: "Dr. Anita Sharma", date: "2026-06-20", time: "3:00 PM", participants: 12, status: "Completed", department: "All Departments", location: "Conference Room B" },
+  { id: 5, title: "Accreditation Preparation Meeting — NAAC", organizer: "Principal", date: "2026-06-15", time: "9:00 AM", participants: 24, status: "Completed", department: "All Departments", location: "Seminar Hall" },
+  { id: 6, title: "Placement Cell Coordination — Industry Connect", organizer: "Prof. Kiran Desai", date: "2026-06-10", time: "11:30 AM", participants: 9, status: "Completed", department: "Computer Science", location: "Placement Office" },
+];
+
+const DOCUMENTS_DATA: DocItem[] = [
+  { id: 1, title: "Curriculum Framework 2026–27 — CS Department", category: "Academic", uploadedBy: "Dr. Anita Sharma", date: "2026-06-25", type: "pdf", size: "2.4 MB", hasSummary: true },
+  { id: 2, title: "Faculty Workload Distribution — Semester II", category: "Administrative", uploadedBy: "Prof. Rajan Mehta", date: "2026-06-22", type: "xlsx", size: "840 KB", hasSummary: true },
+  { id: 3, title: "NAAC Accreditation Report — Self Study Document", category: "Accreditation", uploadedBy: "Quality Cell", date: "2026-06-20", type: "pdf", size: "18.2 MB", hasSummary: true },
+  { id: 4, title: "Student Attendance Summary — June 2026", category: "Academic", uploadedBy: "Dr. Priya Nair", date: "2026-06-18", type: "xlsx", size: "1.1 MB", hasSummary: false },
+  { id: 5, title: "Research Publication List — Faculty 2025–26", category: "Research", uploadedBy: "Dr. Rohit Joshi", date: "2026-06-15", type: "doc", size: "560 KB", hasSummary: true },
+  { id: 6, title: "Lab Safety Guidelines — Updated Version", category: "Facilities", uploadedBy: "Lab Coordinator", date: "2026-06-12", type: "pdf", size: "980 KB", hasSummary: false },
+  { id: 7, title: "Department Budget Utilization — Q1 FY2027", category: "Finance", uploadedBy: "Prof. Rajan Mehta", date: "2026-06-10", type: "xlsx", size: "720 KB", hasSummary: true },
+  { id: 8, title: "Faculty Development Program Schedule", category: "HR", uploadedBy: "HR Office", date: "2026-06-08", type: "ppt", size: "4.8 MB", hasSummary: false },
+];
+
+const TASKS_DATA: TaskItem[] = [
+  { id: 1, title: "Prepare Semester II Timetable Draft", assignee: "Prof. Rajan Mehta", priority: "High", status: "In Progress", dueDate: "2026-07-05", department: "Computer Science", description: "Draft the complete timetable for semester II including lab sessions and tutorial slots." },
+  { id: 2, title: "Submit NAAC Criterion IV Documentation", assignee: "Dr. Priya Nair", priority: "High", status: "Pending", dueDate: "2026-07-10", department: "Computer Science", description: "Compile and submit all documentation required for NAAC Criterion IV — Research, Innovations & Extension." },
+  { id: 3, title: "Faculty Feedback Analysis — Semester I", assignee: "Prof. Rajan Mehta", priority: "Medium", status: "Completed", dueDate: "2026-06-30", department: "Computer Science", description: "Analyze student feedback collected for semester I and prepare summary report." },
+  { id: 4, title: "Update Laboratory Inventory Records", assignee: "Mr. Vikram Singh", priority: "Low", status: "Overdue", dueDate: "2026-06-20", department: "Computer Science", description: "Update all CS lab equipment inventory as per the new format prescribed by the administration." },
+  { id: 5, title: "Research Grant Proposal Submission — SERB", assignee: "Dr. Priya Nair", priority: "High", status: "In Progress", dueDate: "2026-07-15", department: "Computer Science", description: "Prepare and submit SERB research grant proposal for the AI in Education project." },
+  { id: 6, title: "Review and Approve Question Papers", assignee: "Dr. Anita Sharma", priority: "High", status: "Pending", dueDate: "2026-07-08", department: "Computer Science", description: "Review all end-semester question papers for technical accuracy and mark distribution." },
+  { id: 7, title: "Faculty Performance Appraisal Forms Collection", assignee: "Ms. Deepa Krishnan", priority: "Medium", status: "In Progress", dueDate: "2026-07-12", department: "Computer Science", description: "Collect self-appraisal forms from all faculty and compile for HOD review." },
+  { id: 8, title: "Update Department Website Content", assignee: "Mr. Vikram Singh", priority: "Low", status: "Pending", dueDate: "2026-07-20", department: "Computer Science", description: "Update faculty profiles, achievements, and course listings on the department website." },
+];
+
+const NOTIFICATIONS_DATA: NotifItem[] = [
+  { id: 1, type: "task", title: "Task Assigned: Review Question Papers", body: "Dr. Anita Sharma assigned you a high-priority task due July 8.", time: "2 min ago", read: false },
+  { id: 2, type: "meeting", title: "Meeting Reminder: Faculty Meeting Tomorrow", body: "Dept. Faculty Meeting scheduled for July 3 at 10:00 AM in Conf. Room A.", time: "1 hr ago", read: false },
+  { id: 3, type: "announcement", title: "New Announcement: Research Grant Deadline", body: "SERB research grant application deadline is July 15th.", time: "3 hr ago", read: false },
+  { id: 4, type: "document", title: "Document Uploaded: Curriculum Framework 2026–27", body: "Dr. Anita Sharma uploaded a new document to the Academic category.", time: "5 hr ago", read: true },
+  { id: 5, type: "ai", title: "AI Insight: Workload Imbalance Detected", body: "AI detected uneven workload distribution — 3 faculty members above 120% allocation.", time: "6 hr ago", read: true },
+  { id: 6, type: "task", title: "Task Overdue: Lab Inventory Update", body: "Mr. Vikram Singh's task was due June 20 and remains incomplete.", time: "1 day ago", read: true },
+  { id: 7, type: "meeting", title: "Meeting Minutes Available", body: "Minutes for Annual Budget Review (June 20) have been uploaded.", time: "1 day ago", read: true },
+  { id: 8, type: "announcement", title: "Announcement: CS Lab Closure", body: "CS Lab will be closed July 1–3 for equipment calibration.", time: "2 days ago", read: true },
+  { id: 9, type: "document", title: "Document Approved: NAAC Report", body: "NAAC Self Study Document has been reviewed and approved.", time: "2 days ago", read: true },
+  { id: 10, type: "ai", title: "AI Summary Ready: June Announcements", body: "AI has generated summaries for 6 new announcements this month.", time: "3 days ago", read: true },
+];
+
+// ─── Chart Data ────────────────────────────────────────────────────────────
+const workloadData = [
+  { month: "Jan", hours: 18 }, { month: "Feb", hours: 22 }, { month: "Mar", hours: 19 },
+  { month: "Apr", hours: 25 }, { month: "May", hours: 21 }, { month: "Jun", hours: 23 },
+];
+const taskCompletionData = [
+  { month: "Jan", completed: 12, pending: 4 }, { month: "Feb", completed: 15, pending: 6 },
+  { month: "Mar", completed: 18, pending: 3 }, { month: "Apr", completed: 14, pending: 8 },
+  { month: "May", completed: 20, pending: 5 }, { month: "Jun", completed: 17, pending: 6 },
+];
+const uploadTrendData = [
+  { month: "Jan", docs: 24 }, { month: "Feb", docs: 31 }, { month: "Mar", docs: 28 },
+  { month: "Apr", docs: 42 }, { month: "May", docs: 38 }, { month: "Jun", docs: 35 },
+];
+const meetingActivityData = [
+  { month: "Jan", meetings: 5 }, { month: "Feb", meetings: 8 }, { month: "Mar", meetings: 6 },
+  { month: "Apr", meetings: 9 }, { month: "May", meetings: 7 }, { month: "Jun", meetings: 11 },
+];
+const deptDistData = [
+  { name: "Computer Science", value: 14 }, { name: "Electronics", value: 8 },
+  { name: "Mathematics", value: 6 }, { name: "Physics", value: 5 },
+  { name: "Civil", value: 7 }, { name: "Mechanical", value: 7 },
+];
+const CHART_COLORS = ["#27272A", "#52525B", "#71717A", "#A1A1AA", "#D4D4D8", "#E4E4E7"];
+
+// ─── Utilities ─────────────────────────────────────────────────────────────
+function cn(...classes: (string | false | undefined | null)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function initials(name: string) {
+  return name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+}
+
+// ─── UI Primitives ─────────────────────────────────────────────────────────
+
+function Avatar({ name, size = "md", className }: { name: string; size?: "sm" | "md" | "lg" | "xl"; className?: string }) {
+  const sizes = { sm: "w-7 h-7 text-xs", md: "w-9 h-9 text-sm", lg: "w-12 h-12 text-base", xl: "w-20 h-20 text-xl" };
+  return (
+    <div className={cn("rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center font-semibold text-gray-600 flex-shrink-0", sizes[size], className)}>
+      {initials(name)}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    "Active": "bg-gray-900 text-white",
+    "On Leave": "bg-gray-400 text-white",
+    "Inactive": "bg-gray-200 text-gray-600",
+    "Upcoming": "bg-gray-800 text-white",
+    "Completed": "bg-gray-300 text-gray-800",
+    "Cancelled": "bg-gray-100 text-gray-500",
+    "In Progress": "bg-gray-700 text-white",
+    "Pending": "bg-gray-200 text-gray-700",
+    "Overdue": "bg-gray-900 text-white",
+  };
+  return <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", map[status] ?? "bg-gray-100 text-gray-600")}>{status}</span>;
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  const map: Record<string, string> = {
+    High: "border border-gray-800 text-gray-800",
+    Medium: "border border-gray-500 text-gray-600",
+    Low: "border border-gray-300 text-gray-500",
+  };
+  return <span className={cn("px-2 py-0.5 rounded text-xs font-medium", map[priority])}>{priority}</span>;
+}
+
+function CategoryBadge({ label }: { label: string }) {
+  return <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs font-medium">{label}</span>;
+}
+
+function Btn({
+  children, variant = "primary", size = "md", onClick, className, icon: Icon, disabled
+}: {
+  children?: React.ReactNode; variant?: "primary" | "secondary" | "ghost" | "outline" | "danger";
+  size?: "sm" | "md" | "lg"; onClick?: () => void; className?: string;
+  icon?: React.FC<{ size?: number }>; disabled?: boolean;
+}) {
+  const base = "inline-flex items-center gap-2 font-medium rounded-lg transition-colors cursor-pointer select-none";
+  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm", lg: "px-5 py-2.5 text-sm" };
+  const variants = {
+    primary: "bg-gray-900 text-white hover:bg-gray-700",
+    secondary: "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200",
+    ghost: "text-gray-600 hover:bg-gray-100",
+    outline: "border border-gray-300 text-gray-700 hover:bg-gray-50",
+    danger: "bg-gray-800 text-white hover:bg-gray-700",
+  };
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={cn(base, sizes[size], variants[variant], disabled && "opacity-50 cursor-not-allowed", className)}>
+      {Icon && <Icon size={14} />}
+      {children}
+    </button>
+  );
+}
+
+function Input({
+  placeholder, value, onChange, type = "text", className, icon: Icon
+}: {
+  placeholder?: string; value?: string; onChange?: (v: string) => void;
+  type?: string; className?: string; icon?: React.FC<{ size?: number; className?: string }>;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      {Icon && <Icon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />}
+      <input type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)}
+        className={cn("w-full border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400",
+          Icon ? "pl-9 pr-3 py-2" : "px-3 py-2")} />
+    </div>
+  );
+}
+
+function Select({ options, value, onChange, className }: {
+  options: string[]; value?: string; onChange?: (v: string) => void; className?: string;
+}) {
+  return (
+    <select value={value} onChange={e => onChange?.(e.target.value)}
+      className={cn("border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-700 px-3 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-gray-300", className)}>
+      {options.map(o => <option key={o}>{o}</option>)}
+    </select>
+  );
+}
+
+function Card({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
+  return (
+    <div onClick={onClick} className={cn("bg-white border border-gray-200 rounded-xl shadow-sm", className, onClick && "cursor-pointer hover:shadow-md transition-shadow")}>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between mb-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn("bg-gray-100 rounded animate-pulse", className)} />;
+}
+
+function EmptyState({ icon: Icon, title, description, action }: {
+  icon: React.FC<{ size?: number; className?: string }>; title: string; description: string; action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <Icon size={28} className="text-gray-400" />
+      </div>
+      <h3 className="text-base font-semibold text-gray-800 mb-1">{title}</h3>
+      <p className="text-sm text-gray-500 max-w-xs mb-4">{description}</p>
+      {action}
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: React.FC<{ size?: number; className?: string }> }) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm text-gray-500 font-medium">{label}</p>
+        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+          <Icon size={18} className="text-gray-600" />
+        </div>
+      </div>
+      <p className="text-3xl font-bold text-gray-900">{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </Card>
+  );
+}
+
+function FilterBar({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-3 mb-5 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">{children}</div>;
+}
+
+function Tabs({ tabs, active, onChange }: { tabs: string[]; active: string; onChange: (t: string) => void }) {
+  return (
+    <div className="flex border-b border-gray-200 mb-5">
+      {tabs.map(t => (
+        <button key={t} onClick={() => onChange(t)}
+          className={cn("px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+            t === active ? "border-gray-900 text-gray-900" : "border-transparent text-gray-500 hover:text-gray-700")}>
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChartCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+        {action ?? <MoreHorizontal size={16} className="text-gray-400 cursor-pointer" />}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function Pagination({ current, total, onChange }: { current: number; total: number; onChange: (p: number) => void }) {
+  return (
+    <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+      <p className="text-xs text-gray-500">Showing {((current - 1) * 10) + 1}–{Math.min(current * 10, total)} of {total}</p>
+      <div className="flex items-center gap-1">
+        <Btn variant="ghost" size="sm" onClick={() => onChange(Math.max(1, current - 1))} disabled={current === 1}><ChevronLeft size={14} /></Btn>
+        {[...Array(Math.ceil(total / 10))].map((_, i) => (
+          <button key={i} onClick={() => onChange(i + 1)}
+            className={cn("w-8 h-8 rounded text-xs font-medium", i + 1 === current ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100")}>
+            {i + 1}
+          </button>
+        ))}
+        <Btn variant="ghost" size="sm" onClick={() => onChange(Math.min(Math.ceil(total / 10), current + 1))}><ChevronRight size={14} /></Btn>
+      </div>
+    </div>
+  );
+}
+
+function FileIcon({ type }: { type: string }) {
+  const map: Record<string, string> = {
+    pdf: "bg-gray-800 text-white", doc: "bg-gray-600 text-white",
+    xlsx: "bg-gray-500 text-white", ppt: "bg-gray-400 text-gray-900",
+    img: "bg-gray-300 text-gray-700",
+  };
+  return (
+    <div className={cn("w-10 h-12 rounded-lg flex flex-col items-center justify-center text-[10px] font-bold uppercase", map[type] ?? "bg-gray-100 text-gray-500")}>
+      <File size={16} className="mb-0.5" />
+      {type}
+    </div>
+  );
+}
+
+function NotifIcon({ type }: { type: string }) {
+  const icons: Record<string, React.FC<{ size?: number; className?: string }>> = {
+    announcement: Megaphone, task: CheckSquare, meeting: Video, document: FileText, ai: Sparkles
+  };
+  const Icon = icons[type] ?? Bell;
+  return (
+    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+      <Icon size={16} className="text-gray-600" />
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children, footer }: {
+  title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+            <X size={16} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">{children}</div>
+        {footer && <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function Drawer({ title, onClose, children, width = "w-96" }: {
+  title: string; onClose: () => void; children: React.ReactNode; width?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className={cn("relative ml-auto bg-white shadow-2xl flex flex-col", width)}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+            <X size={16} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ value, max }: { value: number; max: number }) {
+  const pct = Math.round((value / max) * 100);
+  return (
+    <div className="w-full bg-gray-100 rounded-full h-1.5">
+      <div className="bg-gray-700 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+// ─── Sidebar ───────────────────────────────────────────────────────────────
+function Sidebar({
+  role, page, onPage, collapsed, onCollapse, onRoleChange
+}: {
+  role: Role; page: AppPage; onPage: (p: AppPage) => void;
+  collapsed: boolean; onCollapse: () => void; onRoleChange: (r: Role) => void;
+}) {
+  const items = NAV_CONFIG[role];
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
+
+  return (
+    <aside className={cn("flex flex-col h-screen border-r border-gray-200 bg-white transition-all duration-300 flex-shrink-0", collapsed ? "w-16" : "w-60")}>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-gray-100">
+        <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0">
+          <GraduationCap size={16} className="text-white" />
+        </div>
+        {!collapsed && <div><p className="font-bold text-gray-900 text-sm leading-tight">UniDept</p><p className="text-xs text-gray-400">Management System</p></div>}
+        <button onClick={onCollapse} className={cn("ml-auto w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center flex-shrink-0", collapsed && "mx-auto ml-0")}>
+          {collapsed ? <ChevronRight size={14} className="text-gray-500" /> : <ChevronLeft size={14} className="text-gray-500" />}
+        </button>
+      </div>
+
+      {/* Role Badge */}
+      {!collapsed && (
+        <div className="px-3 pt-3 pb-2">
+          <button onClick={() => setShowRoleMenu(!showRoleMenu)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">
+            <Shield size={14} className="text-gray-500 flex-shrink-0" />
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-[10px] text-gray-400 font-medium">CURRENT ROLE</p>
+              <p className="text-xs font-semibold text-gray-800 truncate">{ROLE_LABELS[role]}</p>
+            </div>
+            <ChevronDown size={12} className="text-gray-400 flex-shrink-0" />
+          </button>
+          {showRoleMenu && (
+            <div className="mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20 relative">
+              {(["hod", "coordinator", "faculty"] as Role[]).map(r => (
+                <button key={r} onClick={() => { onRoleChange(r); setShowRoleMenu(false); }}
+                  className={cn("w-full text-left px-3 py-2 text-xs hover:bg-gray-50", r === role ? "font-semibold text-gray-900" : "text-gray-600")}>
+                  {ROLE_LABELS[r]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+        {!collapsed && <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Main Navigation</p>}
+        {items.map(({ id, label, icon: Icon }) => (
+          <button key={id} onClick={() => onPage(id)}
+            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              page === id ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+              collapsed && "justify-center px-2")}>
+            <Icon size={17} />
+            {!collapsed && <span>{label}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Bottom Nav */}
+      <div className="px-2 pb-4 pt-2 border-t border-gray-100 space-y-0.5">
+        {BOTTOM_NAV.map(({ id, label, icon: Icon }) => (
+          <button key={id} onClick={() => onPage(id)}
+            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative",
+              page === id ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800",
+              collapsed && "justify-center px-2")}>
+            <Icon size={17} />
+            {!collapsed && <span>{label}</span>}
+            {id === "notifications" && !collapsed && (
+              <span className="ml-auto bg-gray-800 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">3</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* User */}
+      {!collapsed && (
+        <div className="px-3 pb-3 border-t border-gray-100 pt-3">
+          <div className="flex items-center gap-2">
+            <Avatar name="Dr. Anita Sharma" size="sm" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-800 truncate">Dr. Anita Sharma</p>
+              <p className="text-[10px] text-gray-400 truncate">anita.sharma@college.edu</p>
+            </div>
+            <LogOut size={13} className="text-gray-400 cursor-pointer hover:text-gray-700 flex-shrink-0" />
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+// ─── TopNav ────────────────────────────────────────────────────────────────
+function TopNav({
+  role, page, onPage, onMenu
+}: {
+  role: Role; page: AppPage; onPage: (p: AppPage) => void; onMenu: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [showUser, setShowUser] = useState(false);
+  const crumbs = BREADCRUMBS[page] ?? ["Home"];
+
+  return (
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center gap-4 px-5 flex-shrink-0">
+      <button onClick={onMenu} className="md:hidden w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+        <Menu size={18} className="text-gray-600" />
+      </button>
+
+      {/* Breadcrumb */}
+      <nav className="hidden md:flex items-center gap-1.5 text-sm min-w-0">
+        {crumbs.map((c, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            {i > 0 && <ChevronRight size={13} className="text-gray-300 flex-shrink-0" />}
+            <span className={cn("font-medium", i === crumbs.length - 1 ? "text-gray-900" : "text-gray-400 hover:text-gray-600 cursor-pointer")}>{c}</span>
+          </span>
+        ))}
+      </nav>
+
+      <div className="flex-1" />
+
+      {/* Search */}
+      <div className="hidden lg:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-72">
+        <Search size={14} className="text-gray-400 flex-shrink-0" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search anything..."
+          className="flex-1 text-sm text-gray-700 placeholder-gray-400 bg-transparent outline-none" />
+        <kbd className="text-[10px] text-gray-300 border border-gray-200 rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
+      </div>
+
+      {/* AI Search */}
+      <button className="hidden sm:flex items-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-700 transition-colors">
+        <Sparkles size={14} />
+        <span className="hidden xl:inline">AI Search</span>
+      </button>
+
+      {/* Notifications */}
+      <button onClick={() => onPage("notifications")} className="relative w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+        <Bell size={17} className="text-gray-600" />
+        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gray-900 rounded-full" />
+      </button>
+
+      {/* User */}
+      <div className="relative">
+        <button onClick={() => setShowUser(!showUser)} className="flex items-center gap-2 hover:bg-gray-50 rounded-lg px-2 py-1.5">
+          <Avatar name="Dr. Anita Sharma" size="sm" />
+          <div className="hidden md:block text-left">
+            <p className="text-xs font-semibold text-gray-800 leading-tight">Dr. Anita Sharma</p>
+            <p className="text-[10px] text-gray-400 leading-tight">{ROLE_LABELS[role]}</p>
+          </div>
+          <ChevronDown size={13} className="text-gray-400" />
+        </button>
+        {showUser && (
+          <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl py-2 z-30">
+            <div className="px-3 py-2 border-b border-gray-100 mb-1">
+              <p className="text-xs font-semibold text-gray-800">Dr. Anita Sharma</p>
+              <p className="text-[10px] text-gray-400">anita.sharma@college.edu</p>
+            </div>
+            {[
+              { label: "View Profile", icon: User, page: "profile" as AppPage },
+              { label: "Settings", icon: Settings, page: "settings" as AppPage },
+              { label: "Help & Support", icon: HelpCircle, page: "help" as AppPage },
+            ].map(({ label, icon: Icon, page: pg }) => (
+              <button key={label} onClick={() => { onPage(pg); setShowUser(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+            <div className="border-t border-gray-100 mt-1 pt-1">
+              <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50">
+                <LogOut size={14} /><span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+// ─── AUTH PAGES ─────────────────────────────────────────────────────────────
+function LoginPage({ onLogin, onForgot, onRoleChange, role }: {
+  onLogin: () => void; onForgot: () => void; onRoleChange: (r: Role) => void; role: Role;
+}) {
+  const [email, setEmail] = useState("anita.sharma@college.edu");
+  const [pw, setPw] = useState("••••••••");
+  const [showPw, setShowPw] = useState(false);
+  const [remember, setRemember] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Left Panel */}
+      <div className="hidden lg:flex flex-col justify-between w-2/5 bg-gray-900 p-12 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+            <GraduationCap size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="font-bold text-lg leading-tight">UniDept</p>
+            <p className="text-xs text-white/50">Management System</p>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-4xl font-bold leading-tight mb-4">Streamline your department management</h2>
+          <p className="text-white/60 text-sm leading-relaxed">A unified platform for faculty, coordinators, and HODs to collaborate efficiently, manage tasks, documents, and meetings.</p>
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            {[
+              { label: "Departments", val: "8" }, { label: "Faculty", val: "47" },
+              { label: "Active Tasks", val: "128" }, { label: "Meetings/mo", val: "24" }
+            ].map(({ label, val }) => (
+              <div key={label} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <p className="text-2xl font-bold">{val}</p>
+                <p className="text-xs text-white/50 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-white/30">© 2026 UniDept College Management System. All rights reserved.</p>
+      </div>
+
+      {/* Right Panel */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6 lg:hidden">
+              <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
+                <GraduationCap size={16} className="text-white" />
+              </div>
+              <span className="font-bold text-gray-900">UniDept</span>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
+            <p className="text-sm text-gray-500">Sign in to your account to continue</p>
+          </div>
+
+          {/* Role Switcher for Demo */}
+          <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+            <p className="text-xs text-gray-500 mb-2 font-medium">DEMO — Select Role to Preview</p>
+            <div className="flex gap-2">
+              {(["hod", "coordinator", "faculty"] as Role[]).map(r => (
+                <button key={r} onClick={() => onRoleChange(r)}
+                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                    r === role ? "bg-gray-900 text-white border-gray-900" : "bg-white border-gray-200 text-gray-600 hover:border-gray-400")}>
+                  {r === "hod" ? "HOD" : r === "coordinator" ? "Coord." : "Faculty"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={e => { e.preventDefault(); onLogin(); }} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">Email address</label>
+              <Input value={email} onChange={setEmail} placeholder="you@college.edu" icon={Mail} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-gray-700">Password</label>
+                <button type="button" onClick={onForgot} className="text-xs text-gray-500 hover:text-gray-800">Forgot password?</button>
+              </div>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type={showPw ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)}
+                  className="w-full pl-9 pr-10 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gray-300" />
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {showPw ? <EyeOff size={14} className="text-gray-400" /> : <Eye size={14} className="text-gray-400" />}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="remember" checked={remember} onChange={e => setRemember(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300" />
+              <label htmlFor="remember" className="text-sm text-gray-600">Remember me for 30 days</label>
+            </div>
+            <Btn variant="primary" size="lg" className="w-full justify-center">Sign In</Btn>
+          </form>
+
+          <p className="mt-6 text-center text-xs text-gray-400">Protected by enterprise SSO. Contact IT for access issues.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+      <div className="w-full max-w-sm">
+        <button onClick={onBack} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-8">
+          <ChevronLeft size={16} /> Back to sign in
+        </button>
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+          <Key size={24} className="text-gray-600" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Forgot password?</h1>
+        <p className="text-sm text-gray-500 mb-6">Enter your email address and we'll send you a reset link.</p>
+        {sent ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
+            <CheckCircle size={32} className="text-gray-700 mx-auto mb-3" />
+            <p className="font-semibold text-gray-900 mb-1">Reset link sent!</p>
+            <p className="text-sm text-gray-500">Check your email inbox and follow the instructions.</p>
+          </div>
+        ) : (
+          <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-4">
+            <Input value={email} onChange={setEmail} placeholder="you@college.edu" icon={Mail} />
+            <Btn variant="primary" size="lg" className="w-full justify-center">Send Reset Link</Btn>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordPage({ onBack }: { onBack: () => void }) {
+  const [pw, setPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+      <div className="w-full max-w-sm">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+          <Lock size={24} className="text-gray-600" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Set new password</h1>
+        <p className="text-sm text-gray-500 mb-6">Must be at least 8 characters with uppercase, number, and symbol.</p>
+        <form onSubmit={e => { e.preventDefault(); onBack(); }} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">New Password</label>
+            <Input value={pw} onChange={setPw} type="password" placeholder="Enter new password" icon={Lock} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Confirm Password</label>
+            <Input value={confirm} onChange={setConfirm} type="password" placeholder="Confirm new password" icon={Lock} />
+          </div>
+          <div className="space-y-1.5">
+            {["At least 8 characters", "One uppercase letter", "One number", "One special character"].map(rule => (
+              <div key={rule} className="flex items-center gap-2 text-xs text-gray-500">
+                <div className={cn("w-4 h-4 rounded-full flex items-center justify-center", pw.length >= 8 ? "bg-gray-800" : "bg-gray-200")}>
+                  <CheckCircle size={10} className={pw.length >= 8 ? "text-white" : "text-gray-400"} />
+                </div>
+                {rule}
+              </div>
+            ))}
+          </div>
+          <Btn variant="primary" size="lg" className="w-full justify-center">Update Password</Btn>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── HOD Dashboard ─────────────────────────────────────────────────────────
+function HODDashboard({ onPage }: { onPage: (p: AppPage) => void }) {
+  return (
+    <div className="p-6 space-y-6">
+      {/* Welcome */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning, Dr. Sharma</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Monday, 30 June 2026 · Computer Science Department</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={RefreshCw}>Refresh</Btn>
+          <Btn variant="primary" size="sm" icon={Plus}>Quick Action</Btn>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+        <StatCard label="Total Faculty" value={47} sub="Across 8 depts" icon={Users} />
+        <StatCard label="Departments" value={8} sub="Active this sem" icon={Building2} />
+        <StatCard label="Active Tasks" value={23} sub="5 high priority" icon={CheckSquare} />
+        <StatCard label="Pending Approvals" value={5} sub="Needs review" icon={AlertCircle} />
+        <StatCard label="Meetings Today" value={3} sub="Next: 10:00 AM" icon={Video} />
+        <StatCard label="Documents" value={142} sub="12 new this week" icon={FileText} />
+        <StatCard label="Announcements" value={12} sub="3 pinned" icon={Megaphone} />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+        <ChartCard title="Faculty Workload (hrs/week)">
+          <ResponsiveContainer width="100%" height={140}>
+            <RBar data={workloadData} barSize={20}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={24} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+              <Bar dataKey="hours" fill="#27272A" radius={[4, 4, 0, 0]} />
+            </RBar>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Task Completion Trend">
+          <ResponsiveContainer width="100%" height={140}>
+            <RLine data={taskCompletionData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={24} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+              <Line type="monotone" dataKey="completed" stroke="#27272A" strokeWidth={2} dot={{ r: 3, fill: "#27272A" }} />
+              <Line type="monotone" dataKey="pending" stroke="#A1A1AA" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3, fill: "#A1A1AA" }} />
+            </RLine>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Document Upload Trends">
+          <ResponsiveContainer width="100%" height={140}>
+            <RArea data={uploadTrendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={24} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+              <Area type="monotone" dataKey="docs" stroke="#52525B" fill="#F4F4F5" strokeWidth={2} />
+            </RArea>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Dept. Distribution">
+          <ResponsiveContainer width="100%" height={140}>
+            <RPie>
+              <Pie data={deptDistData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} dataKey="value" paddingAngle={2}>
+                {deptDistData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+            </RPie>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Recent Announcements */}
+        <Card className="p-5">
+          <SectionHeader title="Recent Announcements" action={
+            <Btn variant="ghost" size="sm" onClick={() => onPage("announcements")}>View all <ArrowRight size={12} /></Btn>
+          } />
+          <div className="space-y-3">
+            {ANNOUNCEMENTS_DATA.slice(0, 3).map(a => (
+              <div key={a.id} className="flex gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Megaphone size={14} className="text-gray-500" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{a.title}</p>
+                    {a.pinned && <Pin size={10} className="text-gray-400 flex-shrink-0" />}
+                  </div>
+                  <p className="text-xs text-gray-400">{a.category} · {a.date}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Upcoming Meetings */}
+        <Card className="p-5">
+          <SectionHeader title="Upcoming Meetings" action={
+            <Btn variant="ghost" size="sm" onClick={() => onPage("meetings")}>View all <ArrowRight size={12} /></Btn>
+          } />
+          <div className="space-y-3">
+            {MEETINGS_DATA.filter(m => m.status === "Upcoming").map(m => (
+              <div key={m.id} className="flex gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex flex-col items-center justify-center flex-shrink-0 text-center">
+                  <p className="text-[10px] text-gray-400 font-medium">{m.date.slice(5, 7)}/{m.date.slice(8)}</p>
+                  <p className="text-[10px] text-gray-600">{m.time.split(":")[0]}{m.time.includes("PM") ? "pm" : "am"}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-800 leading-tight mb-0.5 line-clamp-1">{m.title}</p>
+                  <p className="text-xs text-gray-400">{m.participants} participants · {m.location}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Pending Approvals & AI Insights */}
+        <div className="space-y-4">
+          <Card className="p-5">
+            <SectionHeader title="Pending Approvals" />
+            <div className="space-y-2">
+              {[
+                { label: "Faculty Leave Request", type: "Leave", sub: "Vikram Singh · Jun 30" },
+                { label: "Document Upload Review", type: "Document", sub: "NAAC Report · Needs HOD sign" },
+                { label: "Task Reassignment", type: "Task", sub: "Lab Inventory · Unassigned" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-800 truncate">{item.label}</p>
+                    <p className="text-[10px] text-gray-400">{item.sub}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button className="w-6 h-6 rounded-md bg-gray-200 hover:bg-gray-300 flex items-center justify-center"><CheckCircle size={11} className="text-gray-600" /></button>
+                    <button className="w-6 h-6 rounded-md bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><X size={11} className="text-gray-400" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-5 border-2 border-dashed border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={14} className="text-gray-500" />
+              <p className="text-sm font-semibold text-gray-800">AI Insights</p>
+            </div>
+            <div className="space-y-2">
+              {[
+                "3 faculty members have workload above 120%",
+                "Task completion rate improved 12% vs. last month",
+                "2 upcoming deadlines in the next 48 hours",
+              ].map((insight, i) => (
+                <p key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-gray-300">›</span>{insight}</p>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Department Activity */}
+      <Card className="p-5">
+        <SectionHeader title="Department Activity Feed" subtitle="Recent actions across all departments" action={
+          <Btn variant="ghost" size="sm">View all activity</Btn>
+        } />
+        <div className="space-y-3">
+          {[
+            { who: "Prof. Rajan Mehta", action: "uploaded", what: "Faculty Workload Distribution — Semester II", time: "2h ago", icon: Upload },
+            { who: "Dr. Priya Nair", action: "completed task", what: "Faculty Feedback Analysis — Semester I", time: "4h ago", icon: CheckSquare },
+            { who: "Admin Office", action: "posted announcement", what: "New Faculty Onboarding — Orientation Program", time: "6h ago", icon: Megaphone },
+            { who: "Dr. Anita Sharma", action: "scheduled meeting", what: "Department Faculty Meeting — July Curriculum", time: "1d ago", icon: Video },
+            { who: "Quality Cell", action: "uploaded", what: "NAAC Accreditation Report — Self Study Document", time: "1d ago", icon: FileUp },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+              <Avatar name={item.who} size="sm" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-700"><span className="font-semibold">{item.who}</span> {item.action} <span className="text-gray-500">{item.what}</span></p>
+              </div>
+              <p className="text-[10px] text-gray-400 flex-shrink-0">{item.time}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Coordinator Dashboard ─────────────────────────────────────────────────
+function CoordinatorDashboard({ onPage }: { onPage: (p: AppPage) => void }) {
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning, Prof. Mehta</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Monday, 30 June 2026 · Department Coordinator</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={Plus} onClick={() => onPage("announcements")}>New Announcement</Btn>
+          <Btn variant="primary" size="sm" icon={Video} onClick={() => onPage("meetings")}>Schedule Meeting</Btn>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Assigned Tasks" value={18} sub="4 overdue" icon={CheckSquare} />
+        <StatCard label="My Meetings" value={5} sub="2 this week" icon={Video} />
+        <StatCard label="My Documents" value={34} sub="3 new uploads" icon={FileText} />
+        <StatCard label="Announcements" value={8} sub="2 from me" icon={Megaphone} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Today's Schedule */}
+        <Card className="p-5 lg:col-span-1">
+          <SectionHeader title="Today's Schedule" subtitle="Monday, June 30" />
+          <div className="space-y-3">
+            {[
+              { time: "09:00", title: "Faculty Sync — Quick Standup", type: "meeting", done: true },
+              { time: "10:30", title: "Review NAAC Document Submissions", type: "task", done: false },
+              { time: "02:00", title: "Research Committee Meeting", type: "meeting", done: false },
+              { time: "04:00", title: "Submit Q2 Performance Reports", type: "task", done: false },
+            ].map((item, i) => (
+              <div key={i} className={cn("flex gap-3 items-start pb-3 border-b border-gray-50 last:border-0 last:pb-0", item.done && "opacity-50")}>
+                <div className="w-14 text-xs font-mono text-gray-400 pt-0.5 flex-shrink-0">{item.time}</div>
+                <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", item.type === "meeting" ? "bg-gray-700" : "bg-gray-400")} />
+                <p className={cn("text-xs font-medium text-gray-700", item.done && "line-through")}>{item.title}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Team Tasks */}
+        <Card className="p-5 lg:col-span-1">
+          <SectionHeader title="Team Task Overview" action={
+            <Btn variant="ghost" size="sm" onClick={() => onPage("tasks")}>View all <ArrowRight size={12} /></Btn>
+          } />
+          <div className="space-y-3">
+            {TASKS_DATA.slice(0, 5).map(t => (
+              <div key={t.id} className="flex items-center gap-3">
+                <Avatar name={t.assignee} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-800 truncate">{t.title}</p>
+                  <p className="text-[10px] text-gray-400">{t.assignee} · Due {t.dueDate}</p>
+                </div>
+                <StatusBadge status={t.status} />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Recent Uploads + AI Recommendations */}
+        <div className="space-y-4">
+          <Card className="p-5">
+            <SectionHeader title="Recent Uploads" action={
+              <Btn variant="ghost" size="sm" onClick={() => onPage("documents")}>All docs <ArrowRight size={12} /></Btn>
+            } />
+            <div className="space-y-2">
+              {DOCUMENTS_DATA.slice(0, 4).map(d => (
+                <div key={d.id} className="flex items-center gap-2.5 py-1.5">
+                  <FileIcon type={d.type} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-800 truncate">{d.title}</p>
+                    <p className="text-[10px] text-gray-400">{d.size} · {d.date}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="p-4 bg-gray-50">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot size={13} className="text-gray-500" />
+              <p className="text-xs font-semibold text-gray-700">AI Recommendations</p>
+            </div>
+            <div className="space-y-1.5">
+              {["2 tasks are nearing their deadlines", "Consider rescheduling July 5 meeting — 3 conflicts", "5 documents pending AI summary generation"].map((r, i) => (
+                <p key={i} className="text-xs text-gray-600">· {r}</p>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Faculty Dashboard ─────────────────────────────────────────────────────
+function FacultyDashboard({ onPage }: { onPage: (p: AppPage) => void }) {
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning, Dr. Nair</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Monday, 30 June 2026 · Faculty · Computer Science</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={Upload} onClick={() => onPage("documents")}>Upload Document</Btn>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="My Tasks" value={6} sub="2 overdue" icon={CheckSquare} />
+        <StatCard label="My Meetings" value={3} sub="Next: Jul 3" icon={Video} />
+        <StatCard label="Notices" value={5} sub="2 unread" icon={Megaphone} />
+        <StatCard label="My Documents" value={12} sub="1 uploaded today" icon={FileText} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Assigned Tasks */}
+        <Card className="p-5 lg:col-span-2">
+          <SectionHeader title="My Assigned Tasks" action={
+            <Btn variant="ghost" size="sm" onClick={() => onPage("tasks")}>View all <ArrowRight size={12} /></Btn>
+          } />
+          <div className="space-y-3">
+            {TASKS_DATA.filter(t => t.assignee === "Dr. Priya Nair").map(t => (
+              <div key={t.id} className="p-3 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <p className="text-sm font-semibold text-gray-800">{t.title}</p>
+                  <PriorityBadge priority={t.priority} />
+                </div>
+                <div className="flex items-center gap-4">
+                  <p className="text-xs text-gray-500 flex items-center gap-1"><Calendar size={11} /> Due {t.dueDate}</p>
+                  <StatusBadge status={t.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Sidebar widgets */}
+        <div className="space-y-4">
+          <Card className="p-5">
+            <SectionHeader title="Upcoming Meetings" action={
+              <Btn variant="ghost" size="sm" onClick={() => onPage("meetings")}>All <ArrowRight size={12} /></Btn>
+            } />
+            <div className="space-y-3">
+              {MEETINGS_DATA.filter(m => m.status === "Upcoming").slice(0, 3).map(m => (
+                <div key={m.id} className="flex gap-3 items-center pb-2.5 border-b border-gray-50 last:border-0">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex flex-col items-center justify-center text-center flex-shrink-0">
+                    <p className="text-[10px] font-bold text-gray-700">{m.date.slice(8)}</p>
+                    <p className="text-[9px] text-gray-400">{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(m.date.slice(5,7))-1]}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-800 line-clamp-1">{m.title}</p>
+                    <p className="text-[10px] text-gray-400">{m.time} · {m.location}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <SectionHeader title="Recent Notices" action={
+              <Btn variant="ghost" size="sm" onClick={() => onPage("announcements")}>All <ArrowRight size={12} /></Btn>
+            } />
+            <div className="space-y-2">
+              {ANNOUNCEMENTS_DATA.slice(0, 3).map(a => (
+                <div key={a.id} className="py-2 border-b border-gray-50 last:border-0">
+                  <div className="flex items-start gap-1.5">
+                    {a.pinned && <Pin size={10} className="text-gray-400 mt-0.5 flex-shrink-0" />}
+                    <p className="text-xs font-medium text-gray-800 line-clamp-1">{a.title}</p>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{a.date} · {a.category}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Faculty Management Page ───────────────────────────────────────────────
+function FacultyPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("All Departments");
+  const [roleFilter, setRoleFilter] = useState("All Roles");
+  const [statusFilter, setStatusFilter] = useState("All Status");
+  const [selected, setSelected] = useState<FacultyMember | null>(null);
+  const [activeTab, setActiveTab] = useState("Basic Info");
+  const [page, setPage] = useState(1);
+
+  const filtered = FACULTY_DATA.filter(f => {
+    const q = search.toLowerCase();
+    return (
+      (f.name.toLowerCase().includes(q) || f.email.toLowerCase().includes(q) || f.designation.toLowerCase().includes(q)) &&
+      (deptFilter === "All Departments" || f.department === deptFilter) &&
+      (roleFilter === "All Roles" || f.role === roleFilter) &&
+      (statusFilter === "All Status" || f.status === statusFilter)
+    );
+  });
+
+  const isHOD = role === "hod";
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{isHOD ? "Faculty Management" : "Faculty Directory"}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{FACULTY_DATA.length} faculty members across 8 departments</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={Download}>Export</Btn>
+          {isHOD && <Btn variant="primary" size="sm" icon={Plus}>Add Faculty</Btn>}
+        </div>
+      </div>
+
+      <FilterBar>
+        <Input placeholder="Search by name, email, or designation..." value={search} onChange={setSearch} icon={Search} className="flex-1 min-w-48" />
+        <Select options={["All Departments", "Computer Science", "Electronics", "Mathematics", "Physics", "Civil", "Mechanical"]}
+          value={deptFilter} onChange={setDeptFilter} />
+        <Select options={["All Roles", "HOD", "Coordinator", "Faculty"]} value={roleFilter} onChange={setRoleFilter} />
+        <Select options={["All Status", "Active", "On Leave", "Inactive"]} value={statusFilter} onChange={setStatusFilter} />
+        <Btn variant="ghost" size="sm" icon={SlidersHorizontal}>Filters</Btn>
+        <Btn variant="ghost" size="sm" icon={SortAsc}>Sort</Btn>
+      </FilterBar>
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {["Faculty", "Email", "Designation", "Department", "Role", "Status", "Actions"].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.slice((page - 1) * 5, page * 5).map(f => (
+                <tr key={f.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setSelected(f)}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={f.name} size="sm" />
+                      <span className="text-sm font-medium text-gray-900">{f.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{f.email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{f.designation}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{f.department}</td>
+                  <td className="px-4 py-3"><CategoryBadge label={f.role} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={f.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <button className="p-1.5 hover:bg-gray-100 rounded-md" onClick={e => { e.stopPropagation(); setSelected(f); }}>
+                        <Eye size={14} className="text-gray-500" />
+                      </button>
+                      {isHOD && <>
+                        <button className="p-1.5 hover:bg-gray-100 rounded-md" onClick={e => e.stopPropagation()}>
+                          <Pencil size={14} className="text-gray-500" />
+                        </button>
+                        <button className="p-1.5 hover:bg-gray-100 rounded-md" onClick={e => e.stopPropagation()}>
+                          <MoreHorizontal size={14} className="text-gray-500" />
+                        </button>
+                      </>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-4">
+          <Pagination current={page} total={filtered.length} onChange={setPage} />
+        </div>
+      </Card>
+
+      {/* Faculty Detail Drawer */}
+      {selected && (
+        <Drawer title={selected.name} onClose={() => setSelected(null)} width="w-[520px]">
+          <div className="flex items-center gap-4 pb-5 mb-5 border-b border-gray-100">
+            <Avatar name={selected.name} size="xl" />
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">{selected.name}</h3>
+              <p className="text-sm text-gray-500">{selected.designation}</p>
+              <div className="flex gap-2 mt-2">
+                <StatusBadge status={selected.status} />
+                <CategoryBadge label={selected.role} />
+              </div>
+            </div>
+            {isHOD && <div className="ml-auto flex gap-2">
+              <Btn variant="outline" size="sm" icon={Pencil}>Edit</Btn>
+              <Btn variant="ghost" size="sm"><MoreHorizontal size={14} /></Btn>
+            </div>}
+          </div>
+          <Tabs tabs={["Basic Info", "Contact", "Department", "Tasks", "Documents", "Timeline"]} active={activeTab} onChange={setActiveTab} />
+          {activeTab === "Basic Info" && (
+            <div className="space-y-3">
+              {[
+                { label: "Full Name", val: selected.name },
+                { label: "Designation", val: selected.designation },
+                { label: "Employee ID", val: `EMP-${String(selected.id).padStart(4, "0")}` },
+                { label: "Date of Joining", val: selected.joined },
+                { label: "Department", val: selected.department },
+                { label: "Role", val: selected.role },
+              ].map(({ label, val }) => (
+                <div key={label} className="flex justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">{label}</span>
+                  <span className="text-sm font-medium text-gray-900">{val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {activeTab === "Contact" && (
+            <div className="space-y-3">
+              {[
+                { icon: Mail, label: "Email", val: selected.email },
+                { icon: Phone, label: "Phone", val: selected.phone },
+                { icon: MapPin, label: "Office", val: "Room 204, Dept. Block A" },
+              ].map(({ icon: Icon, label, val }) => (
+                <div key={label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <Icon size={16} className="text-gray-500" />
+                  <div>
+                    <p className="text-xs text-gray-400">{label}</p>
+                    <p className="text-sm font-medium text-gray-800">{val}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {activeTab === "Tasks" && (
+            <div className="space-y-2">
+              {TASKS_DATA.filter(t => t.assignee.includes(selected.name.split(" ").pop()!)).map(t => (
+                <div key={t.id} className="p-3 rounded-xl border border-gray-100">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="text-sm font-medium text-gray-800">{t.title}</p>
+                    <PriorityBadge priority={t.priority} />
+                  </div>
+                  <div className="flex gap-3">
+                    <StatusBadge status={t.status} />
+                    <p className="text-xs text-gray-400">Due {t.dueDate}</p>
+                  </div>
+                </div>
+              ))}
+              {TASKS_DATA.filter(t => t.assignee.includes(selected.name.split(" ").pop()!)).length === 0 && (
+                <EmptyState icon={CheckSquare} title="No tasks" description="No tasks assigned to this faculty member." />
+              )}
+            </div>
+          )}
+          {(activeTab === "Department" || activeTab === "Documents" || activeTab === "Timeline") && (
+            <EmptyState icon={Layers} title={`${activeTab} details`} description="This section will show detailed information." />
+          )}
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ─── Announcements Page ────────────────────────────────────────────────────
+function AnnouncementsPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All Categories");
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [selected, setSelected] = useState<Announcement | null>(null);
+
+  const canCreate = role !== "faculty";
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Department-wide notices and updates</p>
+        </div>
+        {canCreate && <Btn variant="primary" size="sm" icon={Plus}>Create Announcement</Btn>}
+      </div>
+
+      <FilterBar>
+        <Input placeholder="Search announcements..." value={search} onChange={setSearch} icon={Search} className="flex-1 min-w-48" />
+        <Select options={["All Categories", "Academic", "Examination", "HR", "Research", "Facilities"]}
+          value={category} onChange={setCategory} />
+        <Input placeholder="Date range..." icon={Calendar} className="w-44" />
+        <div className="ml-auto flex border border-gray-200 rounded-lg overflow-hidden">
+          <button onClick={() => setView("grid")} className={cn("px-3 py-2 text-xs", view === "grid" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50")}>
+            <LayoutGrid size={14} />
+          </button>
+          <button onClick={() => setView("list")} className={cn("px-3 py-2 text-xs", view === "list" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50")}>
+            <List size={14} />
+          </button>
+        </div>
+      </FilterBar>
+
+      <div className={cn(view === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "space-y-3")}>
+        {ANNOUNCEMENTS_DATA.map(a => (
+          <Card key={a.id} className="p-5 hover:shadow-md transition-shadow" onClick={() => setSelected(a)}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CategoryBadge label={a.category} />
+                {a.pinned && (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <Pin size={9} /> Pinned
+                  </span>
+                )}
+              </div>
+              {canCreate && <button className="text-gray-400 hover:text-gray-700" onClick={e => e.stopPropagation()}>
+                <MoreHorizontal size={15} />
+              </button>}
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">{a.title}</h3>
+
+            {/* AI Summary */}
+            <div className="mb-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-1 mb-1">
+                <Sparkles size={10} className="text-gray-400" />
+                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">AI Summary</span>
+              </div>
+              <p className="text-xs text-gray-600 line-clamp-2">{a.summary}</p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Avatar name={a.postedBy} size="sm" />
+                <div>
+                  <p className="text-xs font-medium text-gray-700">{a.postedBy}</p>
+                  <p className="text-[10px] text-gray-400">{a.department} · {a.date}</p>
+                </div>
+              </div>
+              {a.hasAttachment && <Paperclip size={13} className="text-gray-400" />}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Detail Modal */}
+      {selected && (
+        <Modal title={selected.title} onClose={() => setSelected(null)}
+          footer={<><Btn variant="outline" onClick={() => setSelected(null)}>Close</Btn>{canCreate && <Btn variant="primary" icon={Pencil}>Edit</Btn>}</>}>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <CategoryBadge label={selected.category} />
+              <CategoryBadge label={selected.department} />
+              {selected.pinned && <CategoryBadge label="📌 Pinned" />}
+            </div>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+              <Avatar name={selected.postedBy} size="sm" />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{selected.postedBy}</p>
+                <p className="text-xs text-gray-400">{selected.date}</p>
+              </div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles size={12} className="text-gray-500" />
+                <span className="text-xs font-semibold text-gray-600">AI Summary</span>
+              </div>
+              <p className="text-sm text-gray-600">{selected.summary}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Full Content</p>
+              <div className="bg-gray-50 rounded-xl p-4 min-h-24 text-sm text-gray-700 leading-relaxed">
+                This is the full announcement content. The Head of Department calls attention to the matter described in this announcement. All relevant faculty are expected to take note and comply accordingly. Further details are available upon request.
+              </div>
+            </div>
+            {selected.hasAttachment && (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <FileIcon type="pdf" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-800">Attached Document.pdf</p>
+                  <p className="text-[10px] text-gray-400">2.4 MB · Click to preview</p>
+                </div>
+                <Btn variant="ghost" size="sm" icon={Download}>Download</Btn>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── Meetings Page ─────────────────────────────────────────────────────────
+function MeetingsPage({ role }: { role: Role }) {
+  const [tab, setTab] = useState("Upcoming");
+  const [selected, setSelected] = useState<Meeting | null>(null);
+  const [detailTab, setDetailTab] = useState("Agenda");
+  const canCreate = role !== "faculty";
+
+  const filtered = MEETINGS_DATA.filter(m => m.status === tab || (tab === "All" && true));
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Schedule and manage department meetings</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={Calendar}>Calendar View</Btn>
+          {canCreate && <Btn variant="primary" size="sm" icon={Plus}>Schedule Meeting</Btn>}
+        </div>
+      </div>
+
+      <FilterBar>
+        <Input placeholder="Search meetings..." icon={Search} className="flex-1 min-w-40" />
+        <Select options={["All Departments", "Computer Science", "Electronics"]} />
+        <Input placeholder="Date..." icon={Calendar} className="w-40" />
+        <Select options={["All Status", "Upcoming", "Completed", "Cancelled"]} />
+      </FilterBar>
+
+      <Tabs tabs={["Upcoming", "Completed", "Cancelled"]} active={tab} onChange={setTab} />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {MEETINGS_DATA.filter(m => m.status === tab).map(m => (
+          <Card key={m.id} className="p-5" onClick={() => { setSelected(m); setDetailTab("Agenda"); }}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <StatusBadge status={m.status} />
+              {canCreate && <button onClick={e => e.stopPropagation()} className="text-gray-400 hover:text-gray-600">
+                <MoreHorizontal size={15} />
+              </button>}
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 leading-snug">{m.title}</h3>
+            <div className="space-y-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2"><Calendar size={12} /> {m.date} · {m.time}</div>
+              <div className="flex items-center gap-2"><MapPin size={12} /> {m.location}</div>
+              <div className="flex items-center gap-2"><Users size={12} /> {m.participants} participants</div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Avatar name={m.organizer} size="sm" />
+                <p className="text-xs text-gray-500">{m.organizer}</p>
+              </div>
+              {m.status === "Upcoming" && canCreate && (
+                <Btn variant="outline" size="sm">Manage</Btn>
+              )}
+            </div>
+          </Card>
+        ))}
+        {MEETINGS_DATA.filter(m => m.status === tab).length === 0 && (
+          <div className="col-span-3">
+            <EmptyState icon={Video} title={`No ${tab} meetings`} description={`There are no ${tab.toLowerCase()} meetings at this time.`}
+              action={canCreate ? <Btn variant="primary" size="sm" icon={Plus}>Schedule Meeting</Btn> : undefined} />
+          </div>
+        )}
+      </div>
+
+      {/* Meeting Detail Drawer */}
+      {selected && (
+        <Drawer title="Meeting Details" onClose={() => setSelected(null)} width="w-[580px]">
+          <div className="pb-4 mb-4 border-b border-gray-100">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <h3 className="text-base font-bold text-gray-900">{selected.title}</h3>
+              <StatusBadge status={selected.status} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              {[
+                { icon: Calendar, val: `${selected.date} · ${selected.time}` },
+                { icon: MapPin, val: selected.location },
+                { icon: Users, val: `${selected.participants} participants` },
+                { icon: User, val: `Organized by ${selected.organizer}` },
+              ].map(({ icon: Icon, val }) => (
+                <div key={val} className="flex items-center gap-2 text-xs text-gray-500">
+                  <Icon size={12} className="flex-shrink-0" />{val}
+                </div>
+              ))}
+            </div>
+          </div>
+          <Tabs tabs={["Agenda", "Minutes", "Decisions", "Attendance", "Action Items", "Attachments"]} active={detailTab} onChange={setDetailTab} />
+          {detailTab === "Agenda" && (
+            <div className="space-y-3">
+              {["Opening & Roll Call", "Review of Previous Minutes", "Curriculum Updates Discussion", "Faculty Performance Metrics", "Budget Utilization Report", "Any Other Business"].map((item, i) => (
+                <div key={i} className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <span className="w-6 h-6 rounded-full bg-gray-200 text-xs font-bold text-gray-600 flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                  <p className="text-sm text-gray-700">{item}</p>
+                  <p className="ml-auto text-xs text-gray-400 flex-shrink-0">{10 + i * 5} min</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {detailTab === "Attendance" && (
+            <div className="space-y-2">
+              {FACULTY_DATA.slice(0, 5).map(f => (
+                <div key={f.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100">
+                  <Avatar name={f.name} size="sm" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-gray-800">{f.name}</p>
+                    <p className="text-[10px] text-gray-400">{f.designation}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <CheckCircle size={13} className="text-gray-700" /> Present
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {["Minutes", "Decisions", "Action Items", "Attachments"].includes(detailTab) && (
+            <EmptyState icon={FileText} title={`No ${detailTab}`} description={`${detailTab} will appear here after the meeting.`} />
+          )}
+          {selected.status === "Upcoming" && canCreate && (
+            <div className="mt-5 flex gap-3">
+              <Btn variant="primary" className="flex-1 justify-center">Start Meeting</Btn>
+              <Btn variant="outline" className="flex-1 justify-center">Edit Details</Btn>
+            </div>
+          )}
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ─── Documents Page ─────────────────────────────────────────────────────────
+function DocumentsPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All Categories");
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [selected, setSelected] = useState<DocItem | null>(null);
+  const [aiChat, setAiChat] = useState("");
+  const [chatMsgs, setChatMsgs] = useState<{ from: "user" | "ai"; text: string }[]>([]);
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Department document repository</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="outline" size="sm" icon={FolderOpen}>Browse Folders</Btn>
+          <Btn variant="primary" size="sm" icon={Upload}>Upload Document</Btn>
+        </div>
+      </div>
+
+      <FilterBar>
+        <Input placeholder="Search documents..." value={search} onChange={setSearch} icon={Search} className="flex-1 min-w-40" />
+        <Select options={["All Categories", "Academic", "Administrative", "Accreditation", "Research", "Finance", "HR", "Facilities"]}
+          value={category} onChange={setCategory} />
+        <Select options={["All Types", "PDF", "Word", "Excel", "PowerPoint", "Image"]} />
+        <Select options={["Date: Newest First", "Date: Oldest First", "Name A–Z", "Size: Largest"]} />
+        <div className="ml-auto flex border border-gray-200 rounded-lg overflow-hidden">
+          <button onClick={() => setView("grid")} className={cn("px-3 py-2", view === "grid" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50")}>
+            <LayoutGrid size={14} />
+          </button>
+          <button onClick={() => setView("list")} className={cn("px-3 py-2", view === "list" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50")}>
+            <List size={14} />
+          </button>
+        </div>
+      </FilterBar>
+
+      {!selected ? (
+        <div className={cn(view === "grid" ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" : "space-y-3")}>
+          {DOCUMENTS_DATA.map(d => (
+            <Card key={d.id} className={cn("hover:shadow-md transition-shadow", view === "grid" ? "p-4" : "p-3")}
+              onClick={() => setSelected(d)}>
+              {view === "grid" ? (
+                <div>
+                  <div className="flex justify-center mb-4"><FileIcon type={d.type} /></div>
+                  {d.hasSummary && (
+                    <div className="mb-2 flex items-center gap-1 justify-center">
+                      <Sparkles size={10} className="text-gray-400" />
+                      <span className="text-[10px] text-gray-400">AI Summary</span>
+                    </div>
+                  )}
+                  <p className="text-xs font-semibold text-gray-800 text-center line-clamp-2 leading-tight mb-2">{d.title}</p>
+                  <CategoryBadge label={d.category} />
+                  <p className="text-[10px] text-gray-400 mt-2">{d.size} · {d.date}</p>
+                  <div className="flex gap-1 mt-3">
+                    <button className="flex-1 text-center text-[10px] text-gray-500 hover:text-gray-800 py-1 bg-gray-50 rounded"><Eye size={11} className="mx-auto" /></button>
+                    <button className="flex-1 text-center text-[10px] text-gray-500 hover:text-gray-800 py-1 bg-gray-50 rounded"><Download size={11} className="mx-auto" /></button>
+                    <button className="flex-1 text-center text-[10px] text-gray-500 hover:text-gray-800 py-1 bg-gray-50 rounded"><Trash2 size={11} className="mx-auto" /></button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <FileIcon type={d.type} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{d.title}</p>
+                    <p className="text-xs text-gray-500">{d.category} · {d.uploadedBy} · {d.date}</p>
+                  </div>
+                  {d.hasSummary && <Sparkles size={13} className="text-gray-400" />}
+                  <p className="text-xs text-gray-400">{d.size}</p>
+                  <div className="flex gap-1">
+                    <button className="p-1.5 hover:bg-gray-100 rounded"><Eye size={13} className="text-gray-500" /></button>
+                    <button className="p-1.5 hover:bg-gray-100 rounded"><Download size={13} className="text-gray-500" /></button>
+                    <button className="p-1.5 hover:bg-gray-100 rounded"><Trash2 size={13} className="text-gray-500" /></button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Document Viewer */
+        <div className="grid grid-cols-3 gap-4 h-[calc(100vh-260px)]">
+          {/* PDF Preview */}
+          <div className="col-span-2 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSelected(null)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800">
+                <ChevronLeft size={16} /> Back to Documents
+              </button>
+              <div className="ml-auto flex gap-2">
+                <Btn variant="outline" size="sm" icon={Download}>Download</Btn>
+                <Btn variant="outline" size="sm" icon={ExternalLink}>Open</Btn>
+              </div>
+            </div>
+            <Card className="flex-1 p-0 overflow-hidden">
+              <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center gap-3">
+                <button className="text-gray-500 hover:text-gray-800"><ChevronLeft size={16} /></button>
+                <span className="text-xs text-gray-500">Page 1 of 24</span>
+                <button className="text-gray-500 hover:text-gray-800"><ChevronRight size={16} /></button>
+                <div className="flex-1" />
+                <span className="text-xs text-gray-500">100%</span>
+              </div>
+              <div className="flex-1 flex items-center justify-center bg-gray-50 min-h-64 p-8">
+                <div className="w-full max-w-md bg-white border border-gray-200 rounded shadow-sm p-8 space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded" />
+                  <div className="h-3 bg-gray-100 rounded w-5/6" />
+                  <div className="h-3 bg-gray-100 rounded w-4/5" />
+                  <div className="h-6 mt-4" />
+                  <div className="h-3 bg-gray-100 rounded" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4" />
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    {[...Array(6)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded" />)}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Sidebar Panel */}
+          <div className="flex flex-col gap-3 overflow-y-auto">
+            <Card className="p-4">
+              <p className="text-xs font-semibold text-gray-700 mb-3">Document Info</p>
+              {[
+                { label: "Title", val: selected.title },
+                { label: "Category", val: selected.category },
+                { label: "Uploaded by", val: selected.uploadedBy },
+                { label: "Date", val: selected.date },
+                { label: "Size", val: selected.size },
+                { label: "Type", val: selected.type.toUpperCase() },
+              ].map(({ label, val }) => (
+                <div key={label} className="flex justify-between py-1.5 text-xs border-b border-gray-50 last:border-0">
+                  <span className="text-gray-500">{label}</span>
+                  <span className="font-medium text-gray-800 text-right max-w-32 truncate">{val}</span>
+                </div>
+              ))}
+            </Card>
+
+            {selected.hasSummary && (
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles size={13} className="text-gray-500" />
+                  <p className="text-xs font-semibold text-gray-700">AI Summary</p>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  This document outlines the curriculum framework for academic year 2026–27. Key changes include updated lab session hours, new elective modules, and revised assessment patterns aligned with NEP 2020 guidelines.
+                </p>
+              </Card>
+            )}
+
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Bot size={13} className="text-gray-500" />
+                <p className="text-xs font-semibold text-gray-700">Chat with Document</p>
+              </div>
+              <div className="flex-1 min-h-24 space-y-2 mb-3">
+                {chatMsgs.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-4">Ask anything about this document</p>
+                )}
+                {chatMsgs.map((m, i) => (
+                  <div key={i} className={cn("text-xs rounded-lg px-3 py-2 max-w-[90%]", m.from === "user" ? "bg-gray-900 text-white ml-auto" : "bg-gray-100 text-gray-700")}>
+                    {m.text}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={aiChat} onChange={e => setAiChat(e.target.value)} placeholder="Ask a question..."
+                  onKeyDown={e => { if (e.key === "Enter" && aiChat.trim()) { setChatMsgs(prev => [...prev, { from: "user", text: aiChat }, { from: "ai", text: "Based on the document, this refers to the updated curriculum structure for the upcoming semester." }]); setAiChat(""); }}}
+                  className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none" />
+                <button className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center flex-shrink-0">
+                  <Send size={13} />
+                </button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tasks Page ─────────────────────────────────────────────────────────────
+function TasksPage({ role }: { role: Role }) {
+  const [tab, setTab] = useState(role === "faculty" ? "My Tasks" : "My Tasks");
+  const [priority, setPriority] = useState("All Priorities");
+  const [status, setStatus] = useState("All Status");
+  const [selected, setSelected] = useState<TaskItem | null>(null);
+  const [comment, setComment] = useState("");
+
+  const tabs = role === "faculty" ? ["My Tasks"] : ["My Tasks", "Department Tasks"];
+  const tasks = tab === "My Tasks"
+    ? TASKS_DATA.filter(t => role === "hod" ? t.assignee === "Dr. Anita Sharma" : t.assignee !== "Dr. Anita Sharma").slice(0, 5)
+    : TASKS_DATA;
+
+  const canCreate = role !== "faculty";
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage and track department tasks</p>
+        </div>
+        {canCreate && <Btn variant="primary" size="sm" icon={Plus}>Create Task</Btn>}
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "Total", val: TASKS_DATA.length, color: "text-gray-900" },
+          { label: "In Progress", val: TASKS_DATA.filter(t => t.status === "In Progress").length, color: "text-gray-700" },
+          { label: "Pending", val: TASKS_DATA.filter(t => t.status === "Pending").length, color: "text-gray-500" },
+          { label: "Overdue", val: TASKS_DATA.filter(t => t.status === "Overdue").length, color: "text-gray-900" },
+        ].map(({ label, val, color }) => (
+          <Card key={label} className="p-4 text-center">
+            <p className={cn("text-2xl font-bold", color)}>{val}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+          </Card>
+        ))}
+      </div>
+
+      <FilterBar>
+        <Input placeholder="Search tasks..." icon={Search} className="flex-1 min-w-40" />
+        <Select options={["All Priorities", "High", "Medium", "Low"]} value={priority} onChange={setPriority} />
+        <Select options={["All Status", "In Progress", "Pending", "Completed", "Overdue"]} value={status} onChange={setStatus} />
+        <Input placeholder="Due date..." icon={Calendar} className="w-36" />
+        {role !== "faculty" && <Select options={["All Assignees", ...FACULTY_DATA.map(f => f.name)]} />}
+      </FilterBar>
+
+      {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={setTab} />}
+
+      <div className="space-y-2">
+        {TASKS_DATA.map(t => (
+          <Card key={t.id} className="p-4 hover:shadow-md transition-shadow" onClick={() => setSelected(t)}>
+            <div className="flex items-start gap-4">
+              <div className="mt-0.5">
+                <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center",
+                  t.status === "Completed" ? "bg-gray-800 border-gray-800" : "border-gray-300")}>
+                  {t.status === "Completed" && <CheckCircle size={10} className="text-white" />}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-3 mb-1.5">
+                  <p className={cn("text-sm font-semibold text-gray-900", t.status === "Completed" && "line-through text-gray-400")}>{t.title}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <PriorityBadge priority={t.priority} />
+                    <StatusBadge status={t.status} />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mb-2 line-clamp-1">{t.description}</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={t.assignee} size="sm" />
+                    <span className="text-xs text-gray-500">{t.assignee}</span>
+                  </div>
+                  <span className="text-xs text-gray-400 flex items-center gap-1"><Calendar size={11} /> Due {t.dueDate}</span>
+                  <span className="text-xs text-gray-400">{t.department}</span>
+                </div>
+              </div>
+              <div className="flex gap-1 flex-shrink-0">
+                {canCreate && <button className="p-1.5 hover:bg-gray-100 rounded-md" onClick={e => e.stopPropagation()}><Pencil size={13} className="text-gray-400" /></button>}
+                <button className="p-1.5 hover:bg-gray-100 rounded-md" onClick={e => e.stopPropagation()}><MoreHorizontal size={13} className="text-gray-400" /></button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Task Detail Drawer */}
+      {selected && (
+        <Drawer title="Task Details" onClose={() => setSelected(null)} width="w-[560px]">
+          <div className="space-y-5">
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h3 className="text-base font-bold text-gray-900">{selected.title}</h3>
+                <div className="flex gap-2 flex-shrink-0">
+                  <PriorityBadge priority={selected.priority} />
+                  <StatusBadge status={selected.status} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">{selected.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Assignee", val: selected.assignee },
+                { label: "Department", val: selected.department },
+                { label: "Due Date", val: selected.dueDate },
+                { label: "Priority", val: selected.priority },
+              ].map(({ label, val }) => (
+                <div key={label} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{label}</p>
+                  <p className="text-sm font-medium text-gray-800">{val}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Timeline</p>
+              <div className="space-y-3">
+                {[
+                  { event: "Task Created", date: "Jun 15, 2026", by: "Dr. Anita Sharma" },
+                  { event: "Assigned to Assignee", date: "Jun 16, 2026", by: "Prof. Rajan Mehta" },
+                  { event: "Status: In Progress", date: "Jun 20, 2026", by: selected.assignee },
+                ].map((e, i) => (
+                  <div key={i} className="flex gap-3 text-xs">
+                    <div className="w-2 h-2 rounded-full bg-gray-400 mt-1.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-gray-800">{e.event}</p>
+                      <p className="text-gray-400">{e.date} · by {e.by}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Comments (2)</p>
+              <div className="space-y-3 mb-3">
+                {[
+                  { who: "Prof. Rajan Mehta", msg: "Please ensure all lab records are included in the inventory.", time: "Jun 18" },
+                  { who: "Mr. Vikram Singh", msg: "Will complete by the end of this week.", time: "Jun 19" },
+                ].map((c, i) => (
+                  <div key={i} className="flex gap-2.5">
+                    <Avatar name={c.who} size="sm" />
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-semibold text-gray-800">{c.who}</p>
+                        <p className="text-[10px] text-gray-400">{c.time}</p>
+                      </div>
+                      <p className="text-xs text-gray-600">{c.msg}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Add a comment..."
+                  className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none" />
+                <Btn variant="primary" size="sm"><Send size={12} /></Btn>
+              </div>
+            </div>
+
+            {canCreate && (
+              <div className="flex gap-3 pt-2 border-t border-gray-100">
+                <Btn variant="primary" className="flex-1 justify-center">Update Status</Btn>
+                <Btn variant="outline" className="flex-1 justify-center">Reassign</Btn>
+              </div>
+            )}
+          </div>
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ─── AI Knowledge Page ─────────────────────────────────────────────────────
+function AIKnowledgePage() {
+  const [query, setQuery] = useState("");
+  const [messages, setMessages] = useState<{ from: "user" | "ai"; text: string }[]>([
+    { from: "ai", text: "Hello! I'm your AI Knowledge Assistant. I can answer questions about your department documents, announcements, meetings, and more. What would you like to know?" }
+  ]);
+  const [activeHistory, setActiveHistory] = useState(0);
+
+  const suggested = [
+    "Summarize this month's announcements",
+    "What are the pending task deadlines?",
+    "Generate minutes for the June 20 meeting",
+    "Who has the highest workload this month?",
+    "List all uploaded documents in Academic category",
+    "What decisions were made in the budget meeting?",
+  ];
+
+  const histories = [
+    { title: "Faculty Workload Analysis", date: "Jun 29" },
+    { title: "NAAC Document Review", date: "Jun 28" },
+    { title: "Task Deadline Summary", date: "Jun 27" },
+    { title: "Meeting Minutes Request", date: "Jun 25" },
+    { title: "Announcement Summary", date: "Jun 24" },
+  ];
+
+  const sendMsg = () => {
+    if (!query.trim()) return;
+    setMessages(prev => [
+      ...prev,
+      { from: "user", text: query },
+      { from: "ai", text: `Based on the department knowledge base, here's what I found regarding "${query}": The relevant documents and records indicate that this relates to ongoing department activities. I've cross-referenced 3 documents, 2 meetings, and 5 tasks to provide this response.` }
+    ]);
+    setQuery("");
+  };
+
+  return (
+    <div className="h-[calc(100vh-64px)] flex">
+      {/* Left Panel */}
+      <div className="w-64 border-r border-gray-200 bg-white flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-gray-100">
+          <Btn variant="primary" size="sm" className="w-full justify-center" icon={Plus}>New Conversation</Btn>
+        </div>
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Recent Conversations</p>
+          <div className="space-y-1">
+            {histories.map((h, i) => (
+              <button key={i} onClick={() => setActiveHistory(i)}
+                className={cn("w-full text-left px-3 py-2.5 rounded-lg text-xs transition-colors",
+                  i === activeHistory ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")}>
+                <p className="font-medium truncate">{h.title}</p>
+                <p className={cn("text-[10px] mt-0.5", i === activeHistory ? "text-gray-400" : "text-gray-400")}>{h.date}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="p-4 flex-1 overflow-y-auto">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Suggested Questions</p>
+          <div className="space-y-2">
+            {suggested.map((s, i) => (
+              <button key={i} onClick={() => setQuery(s)}
+                className="w-full text-left text-xs text-gray-600 hover:bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 leading-snug transition-colors">
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Center Panel */}
+      <div className="flex-1 flex flex-col bg-gray-50">
+        <div className="p-4 bg-white border-b border-gray-200 flex items-center gap-3">
+          <Brain size={20} className="text-gray-600" />
+          <div>
+            <p className="text-sm font-bold text-gray-900">AI Knowledge Assistant</p>
+            <p className="text-xs text-gray-400">Powered by department knowledge base · {DOCUMENTS_DATA.length} docs · {MEETINGS_DATA.length} meetings</p>
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Btn variant="ghost" size="sm" icon={RefreshCw}>Clear</Btn>
+            <Btn variant="ghost" size="sm" icon={Download}>Export</Btn>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {messages.map((m, i) => (
+            <div key={i} className={cn("flex gap-3", m.from === "user" ? "flex-row-reverse" : "flex-row")}>
+              {m.from === "ai" ? (
+                <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0">
+                  <Bot size={14} className="text-white" />
+                </div>
+              ) : (
+                <Avatar name="Dr. Anita Sharma" size="sm" className="flex-shrink-0" />
+              )}
+              <div className={cn("max-w-lg rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                m.from === "user" ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-700")}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 bg-white border-t border-gray-200">
+          <div className="flex gap-3 items-end">
+            <div className="flex-1 border border-gray-200 rounded-xl bg-gray-50 flex items-end gap-2 px-4 py-3">
+              <textarea value={query} onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }}}
+                placeholder="Ask anything about your department knowledge..."
+                className="flex-1 text-sm bg-transparent outline-none resize-none text-gray-800 placeholder-gray-400 max-h-32" rows={1} />
+              <div className="flex gap-2 flex-shrink-0">
+                <button className="text-gray-400 hover:text-gray-700 p-1"><Paperclip size={15} /></button>
+              </div>
+            </div>
+            <button onClick={sendMsg} className="w-11 h-11 rounded-xl bg-gray-900 text-white flex items-center justify-center hover:bg-gray-700 transition-colors">
+              <Send size={17} />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 text-center mt-2">AI may make mistakes. Verify important information from source documents.</p>
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div className="w-72 border-l border-gray-200 bg-white flex flex-col flex-shrink-0 overflow-y-auto">
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-xs font-bold text-gray-800 mb-1">Knowledge Sources</p>
+          <p className="text-[10px] text-gray-400">Referenced in this conversation</p>
+        </div>
+
+        {/* Confidence */}
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-700">Response Confidence</p>
+            <span className="text-xs font-bold text-gray-800">92%</span>
+          </div>
+          <ProgressBar value={92} max={100} />
+          <p className="text-[10px] text-gray-400 mt-1.5">Based on 3 high-confidence documents</p>
+        </div>
+
+        {/* Referenced Documents */}
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Referenced Documents</p>
+          <div className="space-y-2">
+            {DOCUMENTS_DATA.slice(0, 3).map(d => (
+              <div key={d.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <FileIcon type={d.type} />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-800 truncate">{d.title}</p>
+                  <p className="text-[10px] text-gray-400">{d.category}</p>
+                </div>
+                <ExternalLink size={11} className="text-gray-300 flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Referenced Meetings */}
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Referenced Meetings</p>
+          <div className="space-y-2">
+            {MEETINGS_DATA.slice(0, 2).map(m => (
+              <div key={m.id} className="p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <p className="text-xs font-medium text-gray-800 line-clamp-1">{m.title}</p>
+                <p className="text-[10px] text-gray-400">{m.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Related Files */}
+        <div className="p-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Related Announcements</p>
+          <div className="space-y-2">
+            {ANNOUNCEMENTS_DATA.slice(0, 2).map(a => (
+              <div key={a.id} className="p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <p className="text-xs font-medium text-gray-800 line-clamp-2">{a.title}</p>
+                <p className="text-[10px] text-gray-400">{a.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reports Page (HOD only) ────────────────────────────────────────────────
+function ReportsPage() {
+  const [period, setPeriod] = useState("Last 6 Months");
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Comprehensive department performance metrics</p>
+        </div>
+        <div className="flex gap-3">
+          <Select options={["Last 7 Days", "Last 30 Days", "Last 6 Months", "This Year"]} value={period} onChange={setPeriod} />
+          <Btn variant="outline" size="sm" icon={Download}>Export PDF</Btn>
+          <Btn variant="outline" size="sm" icon={Download}>Export Excel</Btn>
+        </div>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Faculty Workload Avg." value="21.4 hrs" sub="↑ 8% vs. last period" icon={Users} />
+        <StatCard label="Task Completion Rate" value="76%" sub="↑ 12% vs. last period" icon={CheckSquare} />
+        <StatCard label="Meeting Efficiency" value="84%" sub="Agenda coverage rate" icon={Video} />
+        <StatCard label="AI Usage" value="234" sub="queries this month" icon={Brain} />
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-2 gap-4">
+        <ChartCard title="Faculty Workload by Month (hrs/week)" action={<Btn variant="ghost" size="sm" icon={Download}>Export</Btn>}>
+          <ResponsiveContainer width="100%" height={220}>
+            <RBar data={workloadData} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+              <Bar dataKey="hours" fill="#27272A" radius={[4, 4, 0, 0]} />
+            </RBar>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Task Completion vs Pending" action={<Btn variant="ghost" size="sm" icon={Download}>Export</Btn>}>
+          <ResponsiveContainer width="100%" height={220}>
+            <RArea data={taskCompletionData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E4E4E7" }} />
+              <Area type="monotone" dataKey="completed" stroke="#27272A" fill="#E4E4E7" strokeWidth={2} />
+              <Area type="monotone" dataKey="pending" stroke="#A1A1AA" fill="#F4F4F5" strokeWidth={2} />
+              <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: 11 }} />
+            </RArea>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-3 gap-4">
+        <ChartCard title="Document Uploads by Month">
+          <ResponsiveContainer width="100%" height={180}>
+            <RLine data={uploadTrendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={24} />
+              <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} />
+              <Line type="monotone" dataKey="docs" stroke="#52525B" strokeWidth={2} dot={{ r: 3, fill: "#52525B" }} />
+            </RLine>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Meeting Activity">
+          <ResponsiveContainer width="100%" height={180}>
+            <RBar data={meetingActivityData} barSize={18}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={24} />
+              <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} />
+              <Bar dataKey="meetings" fill="#52525B" radius={[4, 4, 0, 0]} />
+            </RBar>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Dept. Faculty Distribution">
+          <ResponsiveContainer width="100%" height={180}>
+            <RPie>
+              <Pie data={deptDistData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" paddingAngle={2} label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                {deptDistData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} />
+            </RPie>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            {deptDistData.map((d, i) => (
+              <div key={d.name} className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CHART_COLORS[i] }} />
+                {d.name}
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Table Report */}
+      <Card className="p-5">
+        <SectionHeader title="Faculty Performance Summary" subtitle="Individual metrics for all faculty members" action={
+          <Btn variant="outline" size="sm" icon={Download}>Export</Btn>
+        } />
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                {["Faculty", "Department", "Workload (hrs)", "Tasks Assigned", "Tasks Completed", "Meetings Attended", "Docs Uploaded", "Score"].map(h => (
+                  <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {FACULTY_DATA.slice(0, 6).map((f, i) => (
+                <tr key={f.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={f.name} size="sm" />
+                      <span className="text-sm font-medium text-gray-800">{f.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-600">{f.department}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{18 + i * 2} hrs</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{4 + i}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{3 + i}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{6 + i}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{8 + i}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <ProgressBar value={75 + i * 3} max={100} />
+                      <span className="text-xs font-semibold text-gray-700">{75 + i * 3}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Department Page ─────────────────────────────────────────────────────────
+function DepartmentPage({ role }: { role: Role }) {
+  const [tab, setTab] = useState("Overview");
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Department</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Computer Science Department · EST. 2001</p>
+        </div>
+        {role === "hod" && <Btn variant="primary" size="sm" icon={Pencil}>Edit Department</Btn>}
+      </div>
+
+      {/* Header Banner */}
+      <Card className="p-6 mb-5 bg-gray-900 text-white">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center">
+            <Building2 size={28} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Department of Computer Science</h2>
+            <p className="text-sm text-white/60 mt-0.5">School of Engineering & Technology</p>
+          </div>
+          <div className="ml-auto grid grid-cols-4 gap-6 text-center">
+            {[
+              { label: "Faculty", val: "14" }, { label: "Students", val: "420" },
+              { label: "Programs", val: "4" }, { label: "Research", val: "28" }
+            ].map(({ label, val }) => (
+              <div key={label}>
+                <p className="text-2xl font-bold">{val}</p>
+                <p className="text-xs text-white/50">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      <Tabs tabs={["Overview", "Coordinator", "Faculty", "Statistics", "Activity"]} active={tab} onChange={setTab} />
+
+      {tab === "Overview" && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2 space-y-4">
+            <Card className="p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">About</p>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                The Department of Computer Science offers undergraduate and postgraduate programs in computing, software engineering, and artificial intelligence. Established in 2001, the department has consistently maintained excellence in teaching, research, and industry collaboration, producing graduates who are leaders in technology and innovation.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Programs Offered</p>
+              <div className="grid grid-cols-2 gap-3">
+                {["B.Tech — Computer Science & Eng.", "M.Tech — Computer Science", "BCA — Computer Applications", "PhD — Computer Science"].map(p => (
+                  <div key={p} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs font-medium text-gray-800">{p}</div>
+                ))}
+              </div>
+            </Card>
+          </div>
+          <div className="space-y-4">
+            <Card className="p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Head of Department</p>
+              <div className="flex items-center gap-3">
+                <Avatar name="Dr. Anita Sharma" size="lg" />
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">Dr. Anita Sharma</p>
+                  <p className="text-xs text-gray-500">Professor, HOD</p>
+                  <p className="text-xs text-gray-400 mt-1">anita.sharma@college.edu</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Coordinator</p>
+              <div className="flex items-center gap-3">
+                <Avatar name="Prof. Rajan Mehta" size="lg" />
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">Prof. Rajan Mehta</p>
+                  <p className="text-xs text-gray-500">Assoc. Professor, Coordinator</p>
+                  <p className="text-xs text-gray-400 mt-1">rajan.mehta@college.edu</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Quick Stats</p>
+              <div className="space-y-2">
+                {[
+                  { label: "NAAC Grade", val: "A+" }, { label: "Research Papers (2025–26)", val: "34" },
+                  { label: "Placement Rate", val: "92%" }, { label: "Lab Facilities", val: "6 Labs" },
+                ].map(({ label, val }) => (
+                  <div key={label} className="flex justify-between text-xs py-1.5 border-b border-gray-50 last:border-0">
+                    <span className="text-gray-500">{label}</span>
+                    <span className="font-semibold text-gray-800">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {tab !== "Overview" && (
+        <EmptyState icon={Layers} title={`${tab} view`} description={`Detailed ${tab.toLowerCase()} information for the department.`} />
+      )}
+    </div>
+  );
+}
+
+// ─── Notifications Page ─────────────────────────────────────────────────────
+function NotificationsPage() {
+  const [filter, setFilter] = useState("All");
+  const unread = NOTIFICATIONS_DATA.filter(n => !n.read);
+  const today = NOTIFICATIONS_DATA.filter(n => n.time.includes("hr") || n.time.includes("min"));
+  const earlier = NOTIFICATIONS_DATA.filter(n => n.time.includes("day") || n.time.includes("week"));
+
+  const typeFilters = ["All", "Announcements", "Tasks", "Meetings", "Documents", "AI"];
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{unread.length} unread notifications</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn variant="ghost" size="sm" icon={CheckCircle}>Mark all read</Btn>
+          <Btn variant="ghost" size="sm" icon={Settings}>Preferences</Btn>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mb-5">
+        {typeFilters.map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+              f === filter ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600 hover:bg-gray-50")}>
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-6 max-w-2xl">
+        {unread.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Unread · {unread.length}</p>
+            <div className="space-y-2">
+              {unread.map(n => (
+                <Card key={n.id} className="p-4 border-l-4 border-l-gray-800">
+                  <div className="flex gap-3">
+                    <NotifIcon type={n.type} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">{n.title}</p>
+                        <p className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap">{n.time}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Today</p>
+          <div className="space-y-2">
+            {today.filter(n => n.read).map(n => (
+              <Card key={n.id} className="p-4">
+                <div className="flex gap-3">
+                  <NotifIcon type={n.type} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-700">{n.title}</p>
+                      <p className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap">{n.time}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{n.body}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Earlier</p>
+          <div className="space-y-2">
+            {earlier.map(n => (
+              <Card key={n.id} className="p-4">
+                <div className="flex gap-3">
+                  <NotifIcon type={n.type} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-600">{n.title}</p>
+                      <p className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap">{n.time}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{n.body}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Profile Page ───────────────────────────────────────────────────────────
+function ProfilePage() {
+  const [tab, setTab] = useState("Personal Info");
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
+
+      {/* Header */}
+      <Card className="p-6 mb-5">
+        <div className="flex items-center gap-5">
+          <div className="relative">
+            <Avatar name="Dr. Anita Sharma" size="xl" />
+            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center border-2 border-white">
+              <Pencil size={11} />
+            </button>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Dr. Anita Sharma</h2>
+            <p className="text-sm text-gray-500">Professor · Head of Department</p>
+            <p className="text-sm text-gray-400">Computer Science · Joined August 2015</p>
+          </div>
+          <div className="ml-auto">
+            <Btn variant="outline" size="sm" icon={Pencil}>Edit Profile</Btn>
+          </div>
+        </div>
+      </Card>
+
+      <Tabs tabs={["Personal Info", "Security", "Preferences"]} active={tab} onChange={setTab} />
+
+      {tab === "Personal Info" && (
+        <div className="space-y-5">
+          <Card className="p-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Basic Information</p>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "Full Name", val: "Dr. Anita Sharma", icon: User },
+                { label: "Employee ID", val: "EMP-0001", icon: Hash },
+                { label: "Designation", val: "Professor", icon: Award },
+                { label: "Department", val: "Computer Science", icon: Building2 },
+                { label: "Email", val: "anita.sharma@college.edu", icon: Mail },
+                { label: "Phone", val: "+91 98765 43210", icon: Phone },
+                { label: "Office", val: "Room 204, Dept. Block A", icon: MapPin },
+                { label: "Date of Joining", val: "01 August 2015", icon: Calendar },
+              ].map(({ label, val, icon: Icon }) => (
+                <div key={label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <Icon size={15} className="text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-gray-400 uppercase font-semibold">{label}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{val}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === "Security" && (
+        <div className="space-y-4">
+          <Card className="p-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Change Password</p>
+            <div className="space-y-3 max-w-sm">
+              <div><label className="text-sm font-medium text-gray-700 block mb-1.5">Current Password</label>
+                <Input type="password" placeholder="••••••••" icon={Lock} /></div>
+              <div><label className="text-sm font-medium text-gray-700 block mb-1.5">New Password</label>
+                <Input type="password" placeholder="••••••••" icon={Lock} /></div>
+              <div><label className="text-sm font-medium text-gray-700 block mb-1.5">Confirm Password</label>
+                <Input type="password" placeholder="••••••••" icon={Lock} /></div>
+              <Btn variant="primary">Update Password</Btn>
+            </div>
+          </Card>
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Two-Factor Authentication</p>
+                <p className="text-xs text-gray-500 mt-0.5">Add an extra layer of security to your account</p>
+              </div>
+              <Btn variant="outline" size="sm">Enable</Btn>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === "Preferences" && (
+        <div className="space-y-4">
+          <Card className="p-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Notification Preferences</p>
+            <div className="space-y-3">
+              {["Email notifications", "Push notifications", "Weekly digest", "Announcement alerts", "Task reminders", "Meeting reminders"].map(pref => (
+                <div key={pref} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <p className="text-sm text-gray-700">{pref}</p>
+                  <div className="w-10 h-6 bg-gray-800 rounded-full flex items-center px-1 cursor-pointer">
+                    <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Page ─────────────────────────────────────────────────────────
+function SettingsPage() {
+  const [section, setSection] = useState("Appearance");
+  const sections = ["Appearance", "Notifications", "Language & Region", "Account", "Privacy", "Accessibility"];
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+      <div className="flex gap-6">
+        <div className="w-48 flex-shrink-0">
+          <nav className="space-y-0.5">
+            {sections.map(s => (
+              <button key={s} onClick={() => setSection(s)}
+                className={cn("w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  s === section ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")}>
+                {s}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div className="flex-1 max-w-xl space-y-4">
+          {section === "Appearance" && <>
+            <Card className="p-5">
+              <p className="text-sm font-semibold text-gray-800 mb-4">Theme</p>
+              <div className="grid grid-cols-3 gap-3">
+                {["Light", "Dark", "System"].map(t => (
+                  <div key={t} className={cn("p-4 rounded-xl border-2 cursor-pointer text-center", t === "Light" ? "border-gray-800" : "border-gray-200 hover:border-gray-400")}>
+                    <div className={cn("w-8 h-8 rounded-lg mx-auto mb-2", t === "Dark" ? "bg-gray-900" : t === "System" ? "bg-gradient-to-br from-white to-gray-800" : "bg-white border border-gray-200")} />
+                    <p className="text-xs font-medium text-gray-700">{t}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-semibold text-gray-800 mb-4">Density</p>
+              <div className="grid grid-cols-3 gap-3">
+                {["Compact", "Comfortable", "Spacious"].map(d => (
+                  <div key={d} className={cn("p-3 rounded-xl border-2 cursor-pointer text-center", d === "Comfortable" ? "border-gray-800" : "border-gray-200")}>
+                    <p className="text-xs font-medium text-gray-700">{d}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </>}
+          {section === "Language & Region" && (
+            <Card className="p-5">
+              <p className="text-sm font-semibold text-gray-800 mb-4">Language & Region</p>
+              <div className="space-y-4">
+                <div><label className="text-sm font-medium text-gray-700 block mb-1.5">Interface Language</label>
+                  <Select options={["English (US)", "English (UK)", "Hindi", "Tamil", "Telugu"]} className="w-full" /></div>
+                <div><label className="text-sm font-medium text-gray-700 block mb-1.5">Date Format</label>
+                  <Select options={["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]} className="w-full" /></div>
+                <div><label className="text-sm font-medium text-gray-700 block mb-1.5">Time Zone</label>
+                  <Select options={["Asia/Kolkata (IST +5:30)", "UTC", "US/Eastern"]} className="w-full" /></div>
+              </div>
+            </Card>
+          )}
+          {!["Appearance", "Language & Region"].includes(section) && (
+            <EmptyState icon={Settings} title={`${section} Settings`} description={`Configure your ${section.toLowerCase()} preferences here.`} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Help Page ──────────────────────────────────────────────────────────────
+function HelpPage() {
+  const [search, setSearch] = useState("");
+  const faqs = [
+    { q: "How do I create a new announcement?", a: "Navigate to Announcements → Click 'Create Announcement' → Fill in the form and publish." },
+    { q: "How do I schedule a meeting?", a: "Go to Meetings → Click 'Schedule Meeting' → Set agenda, participants, date, and time." },
+    { q: "How do I upload documents?", a: "Navigate to Documents → Click 'Upload Document' → Select file and choose category." },
+    { q: "How does AI Knowledge work?", a: "AI Knowledge queries your department's documents, meetings, and announcements to answer questions using AI." },
+    { q: "How do I assign tasks?", a: "Go to Tasks → Create Task → Assign it to a faculty member with deadline and priority." },
+    { q: "How do I export reports?", a: "Navigate to Reports (HOD only) → Select report type → Click Export PDF or Export Excel." },
+  ];
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Help & Support</h1>
+      <p className="text-sm text-gray-500 mb-6">Find answers, guides, and support resources</p>
+
+      <Input placeholder="Search help articles..." value={search} onChange={setSearch} icon={Search} className="mb-6" />
+
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { icon: BookOpen, title: "Documentation", desc: "Full user guide" },
+          { icon: Video, title: "Video Tutorials", desc: "Step-by-step videos" },
+          { icon: MessageSquare, title: "Contact Support", desc: "Get help from IT" },
+        ].map(({ icon: Icon, title, desc }) => (
+          <Card key={title} className="p-5 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <Icon size={22} className="text-gray-600" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+          </Card>
+        ))}
+      </div>
+
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Frequently Asked Questions</p>
+      <div className="space-y-2">
+        {faqs.map((faq, i) => (
+          <Card key={i} className="overflow-hidden">
+            <details className="group">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 list-none">
+                <p className="text-sm font-medium text-gray-800">{faq.q}</p>
+                <ChevronDown size={16} className="text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0" />
+              </summary>
+              <div className="px-5 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100">{faq.a}</div>
+            </details>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Error Pages ─────────────────────────────────────────────────────────────
+function ErrorPage({ code, title, description, onBack }: {
+  code: string; title: string; description: string; onBack: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+      <div className="w-48 h-36 bg-gray-100 border border-dashed border-gray-300 rounded-2xl flex items-center justify-center mb-8">
+        <div className="text-center">
+          <p className="text-5xl font-black text-gray-200">{code}</p>
+          <p className="text-xs text-gray-400 mt-1">Illustration</p>
+        </div>
+      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+      <p className="text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">{description}</p>
+      <div className="flex gap-3">
+        <Btn variant="outline" onClick={onBack} icon={ChevronLeft}>Go Back</Btn>
+        <Btn variant="primary" onClick={onBack} icon={Home}>Dashboard</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ───────────────────────────────────────────────────────────────
+export default function App() {
+  const [view, setView] = useState<"auth" | "app">("auth");
+  const [authPage, setAuthPage] = useState<AuthView>("login");
+  const [role, setRole] = useState<Role>("hod");
+  const [page, setPage] = useState<AppPage>("dashboard");
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleLogin = () => { setView("app"); setPage("dashboard"); };
+  const handleRoleChange = (r: Role) => { setRole(r); setPage("dashboard"); };
+
+  // Auth Flow
+  if (view === "auth") {
+    if (authPage === "forgot") return <ForgotPasswordPage onBack={() => setAuthPage("login")} />;
+    if (authPage === "reset") return <ResetPasswordPage onBack={() => setAuthPage("login")} />;
+    return <LoginPage onLogin={handleLogin} onForgot={() => setAuthPage("forgot")} onRoleChange={setRole} role={role} />;
+  }
+
+  // Dashboard selection
+  const DashboardComponent =
+    role === "hod" ? HODDashboard :
+    role === "coordinator" ? CoordinatorDashboard :
+    FacultyDashboard;
+
+  // Page content
+  const renderPage = () => {
+    switch (page) {
+      case "dashboard": return <DashboardComponent onPage={setPage} />;
+      case "faculty": return <FacultyPage role={role} />;
+      case "announcements": return <AnnouncementsPage role={role} />;
+      case "meetings": return <MeetingsPage role={role} />;
+      case "documents": return <DocumentsPage role={role} />;
+      case "tasks": return <TasksPage role={role} />;
+      case "ai-knowledge": return <AIKnowledgePage />;
+      case "reports":
+        if (role !== "hod") return <ErrorPage code="403" title="Access Restricted" description="You don't have permission to view Reports. This section is available to the Head of Department only." onBack={() => setPage("dashboard")} />;
+        return <ReportsPage />;
+      case "department": return <DepartmentPage role={role} />;
+      case "notifications": return <NotificationsPage />;
+      case "profile": return <ProfilePage />;
+      case "settings": return <SettingsPage />;
+      case "help": return <HelpPage />;
+      case "e404": return <ErrorPage code="404" title="Page Not Found" description="The page you're looking for doesn't exist or has been moved. Check the URL and try again." onBack={() => setPage("dashboard")} />;
+      case "e403": return <ErrorPage code="403" title="Access Forbidden" description="You don't have permission to access this page. Contact your administrator if you believe this is a mistake." onBack={() => setPage("dashboard")} />;
+      case "e500": return <ErrorPage code="500" title="Server Error" description="Something went wrong on our end. Our team has been notified. Please try again in a few minutes." onBack={() => setPage("dashboard")} />;
+      default: return <DashboardComponent onPage={setPage} />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 z-50">
+            <Sidebar role={role} page={page} onPage={p => { setPage(p); setMobileOpen(false); }}
+              collapsed={false} onCollapse={() => setMobileOpen(false)} onRoleChange={handleRoleChange} />
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex">
+        <Sidebar role={role} page={page} onPage={setPage} collapsed={collapsed}
+          onCollapse={() => setCollapsed(!collapsed)} onRoleChange={handleRoleChange} />
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopNav role={role} page={page} onPage={setPage} onMenu={() => setMobileOpen(true)} />
+
+        {/* Error page quick nav for demo */}
+        <div className="bg-gray-100 border-b border-gray-200 px-5 py-2 flex items-center gap-3 text-xs text-gray-500 overflow-x-auto">
+          <span className="font-medium text-gray-400 flex-shrink-0">Demo Nav:</span>
+          {(["e404", "e403", "e500"] as AppPage[]).map(ep => (
+            <button key={ep} onClick={() => setPage(ep)}
+              className="px-2.5 py-1 rounded-md bg-white border border-gray-200 hover:border-gray-400 text-gray-600 transition-colors flex-shrink-0">
+              {ep.toUpperCase()}
+            </button>
+          ))}
+          <span className="text-gray-300">|</span>
+          <span className="text-gray-400">Sign out:</span>
+          <button onClick={() => setView("auth")} className="px-2.5 py-1 rounded-md bg-white border border-gray-200 hover:border-gray-400 text-gray-600 transition-colors">
+            Back to Login
+          </button>
+        </div>
+
+        <main className={cn("flex-1 overflow-y-auto", page === "ai-knowledge" && "overflow-hidden")}>
+          {renderPage()}
+        </main>
+      </div>
+    </div>
+  );
+}
