@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
+import { createClient } from "@/lib/supabase-client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import {
   LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
   BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
@@ -28,7 +30,7 @@ type AppPage =
   | "documents" | "tasks" | "ai-knowledge" | "reports"
   | "department" | "notifications" | "profile" | "settings"
   | "help" | "e404" | "e403" | "e500";
-type AuthView = "login" | "forgot" | "reset";
+type AuthView = "login" | "signup" | "forgot" | "reset";
 type ViewMode = "auth" | "app";
 
 interface NavItem { id: AppPage; label: string; icon: React.ComponentType<any> }
@@ -288,6 +290,17 @@ function Input({ placeholder, value, onChange, type="text", className, icon:Icon
         onFocus={e=>{e.target.style.borderColor=C.blue200; e.target.style.boxShadow=`0 0 0 3px ${C.blue50}`;}}
         onBlur={e=>{e.target.style.borderColor=C.border; e.target.style.boxShadow="none";}} />
     </div>
+  );
+}
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.35 0-4.34-1.58-5.05-3.72H.93v2.34A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.16.28-1.7V4.96H.93A9 9 0 0 0 0 9c0 1.45.34 2.82.93 4.04l3.02-2.34Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.34l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .93 4.96L3.95 7.3C4.66 5.16 6.65 3.58 9 3.58Z" />
+    </svg>
   );
 }
 
@@ -605,7 +618,7 @@ function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChange }: {
 }
 
 // ─── TopNav ───────────────────────────────────────────────────────────────────
-function TopNav({ role, page, onPage, onMenu }: { role:Role; page:AppPage; onPage:(p:AppPage)=>void; onMenu:()=>void }) {
+function TopNav({ role, page, onPage, onMenu, onLogout }: { role:Role; page:AppPage; onPage:(p:AppPage)=>void; onMenu:()=>void; onLogout:()=>void }) {
   const [search, setSearch] = useState("");
   const [showUser, setShowUser] = useState(false);
   const crumbs = BREADCRUMBS[page] ?? ["Home"];
@@ -673,7 +686,7 @@ function TopNav({ role, page, onPage, onMenu }: { role:Role; page:AppPage; onPag
               </button>
             ))}
             <div className="border-t mt-1 pt-1" style={{borderColor:C.border}}>
-              <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" style={{color:C.red300}}
+              <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" style={{color:C.red300}}
                 onMouseEnter={e=>hov(e.currentTarget,C.red50)} onMouseLeave={e=>unhov(e.currentTarget,"transparent")}>
                 <LogOut size={14} />Sign Out
               </button>
@@ -686,13 +699,33 @@ function TopNav({ role, page, onPage, onMenu }: { role:Role; page:AppPage; onPag
 }
 
 // ─── Auth Pages ───────────────────────────────────────────────────────────────
-function LoginPage({ onLogin, onForgot, onRoleChange, role }: {
-  onLogin:()=>void; onForgot:()=>void; onRoleChange:(r:Role)=>void; role:Role;
+function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleChange, role }: {
+  onLogin:(email:string,password:string)=>Promise<string | null>;
+  onGoogleLogin:()=>Promise<void>;
+  onForgot:()=>void; onSignup:()=>void; onRoleChange:(r:Role)=>void; role:Role;
 }) {
   const [email, setEmail] = useState("anita.sharma@college.edu");
-  const [pw, setPw] = useState("••••••••");
+  const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const submitLogin = async () => {
+    setError("");
+    setLoading(true);
+    const message = await onLogin(email.trim(), pw);
+    if (message) setError(message);
+    setLoading(false);
+  };
+
+  const submitGoogleLogin = async () => {
+    setError("");
+    setGoogleLoading(true);
+    await onGoogleLogin();
+    setGoogleLoading(false);
+  };
   return (
     <div className="min-h-screen flex" style={{background:C.bg}}>
       <div className="hidden lg:flex flex-col justify-between w-2/5 p-12" style={{background:C.blue600}}>
@@ -745,7 +778,7 @@ function LoginPage({ onLogin, onForgot, onRoleChange, role }: {
             </div>
           </div>
 
-          <form onSubmit={e=>{ e.preventDefault(); onLogin(); }} className="space-y-4">
+          <form onSubmit={e=>{ e.preventDefault(); void submitLogin(); }} className="space-y-4">
             <div>
               <label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Email address</label>
               <Input value={email} onChange={setEmail} placeholder="you@college.edu" icon={Mail} />
@@ -769,9 +802,139 @@ function LoginPage({ onLogin, onForgot, onRoleChange, role }: {
               <input type="checkbox" id="rem" checked={remember} onChange={e=>setRemember(e.target.checked)} className="w-4 h-4 rounded" />
               <label htmlFor="rem" className="text-sm" style={{color:C.textSecondary}}>Remember me for 30 days</label>
             </div>
-            <Btn variant="primary" size="lg" className="w-full justify-center">Sign In to WorkHub</Btn>
+            {error && (
+              <div className="rounded-xl border px-3 py-2 text-sm font-medium" style={{background:C.red50,borderColor:C.red100,color:C.red500}}>
+                {error}
+              </div>
+            )}
+            <Btn variant="primary" size="lg" className="w-full justify-center" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In to WorkHub"}
+            </Btn>
           </form>
-          <p className="mt-6 text-center text-xs" style={{color:C.textDisabled}}>Protected by enterprise SSO · Contact IT for access issues</p>
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1" style={{background:C.border}} />
+            <span className="text-xs font-semibold uppercase" style={{color:C.textMuted}}>or</span>
+            <div className="h-px flex-1" style={{background:C.border}} />
+          </div>
+
+          <button type="button" onClick={submitGoogleLogin} disabled={googleLoading}
+            className="w-full inline-flex items-center justify-center gap-3 rounded-[10px] border bg-white px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            style={{borderColor:C.border,color:C.textPrimary}}>
+            <GoogleIcon />
+            {googleLoading ? "Opening Google..." : "Continue with Google"}
+          </button>
+
+          <p className="mt-5 text-center text-sm" style={{color:C.textSecondary}}>
+            New to WorkHub?{" "}
+            <button type="button" onClick={onSignup} className="font-bold hover:opacity-70" style={{color:C.blue200}}>
+              Create an account
+            </button>
+          </p>
+          <p className="mt-4 text-center text-xs" style={{color:C.textDisabled}}>Protected by enterprise SSO · Contact IT for access issues</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignupPage({ onSignup, onGoogleLogin, onBack, onRoleChange, role }: {
+  onSignup:(name:string,email:string,password:string)=>Promise<string | null>;
+  onGoogleLogin:()=>Promise<void>;
+  onBack:()=>void; onRoleChange:(r:Role)=>void; role:Role;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const submitSignup = async () => {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    const result = await onSignup(name.trim(), email.trim(), pw);
+    if (result) {
+      setError(result);
+    } else {
+      setMessage("Account created. Check your email to confirm your signup, then sign in.");
+      setPw("");
+    }
+    setLoading(false);
+  };
+
+  const submitGoogleLogin = async () => {
+    setError("");
+    setGoogleLoading(true);
+    await onGoogleLogin();
+    setGoogleLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex" style={{background:C.bg}}>
+      <div className="hidden lg:flex flex-col justify-between w-2/5 p-12" style={{background:C.blue600}}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.08)"}}>
+            <span className="text-base font-black" style={{color:C.blue200}}>W</span>
+          </div>
+          <div>
+            <p className="font-black text-lg leading-tight text-white">WorkHub AI</p>
+            <p className="text-xs" style={{color:C.gray300}}>Dept. Management System</p>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-4xl font-black leading-tight mb-4 text-white">Create your department workspace account.</h2>
+          <p className="text-sm leading-relaxed" style={{color:C.gray200}}>Sign up with your college email or use Google to join WorkHub AI.</p>
+        </div>
+        <p className="text-xs" style={{color:C.gray400}}>© 2026 WorkHub AI · All rights reserved</p>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold mb-8 hover:opacity-70" style={{color:C.blue200}}>
+            <ChevronLeft size={16} />Back to sign in
+          </button>
+          <div className="mb-8">
+            <h1 className="text-2xl font-black mb-1" style={{color:C.blue600}}>Create account</h1>
+            <p className="text-sm" style={{color:C.textSecondary}}>Start with your college workspace details</p>
+          </div>
+
+          <div className="mb-6 p-4 rounded-2xl border" style={{background:C.bg, borderColor:C.border}}>
+            <p className="text-xs font-black uppercase tracking-widest mb-2.5" style={{color:C.textMuted}}>Demo - Preview as Role</p>
+            <div className="flex gap-2">
+              {(["hod","coordinator","faculty"] as Role[]).map(r=>(
+                <button key={r} onClick={()=>onRoleChange(r)} className="flex-1 py-2 rounded-xl text-xs font-bold border transition-all"
+                  style={r===role ? {background:C.blue500,color:"#fff",borderColor:C.blue500} : {background:"#fff",borderColor:C.border,color:C.textSecondary}}>
+                  {r==="hod"?"HOD":r==="coordinator"?"Coord.":"Faculty"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={e=>{ e.preventDefault(); void submitSignup(); }} className="space-y-4">
+            <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Full name</label><Input value={name} onChange={setName} placeholder="Dr. Anita Sharma" icon={User} /></div>
+            <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Email address</label><Input value={email} onChange={setEmail} placeholder="you@college.edu" icon={Mail} /></div>
+            <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Password</label><Input value={pw} onChange={setPw} type="password" placeholder="At least 6 characters" icon={Lock} /></div>
+            {error && <div className="rounded-xl border px-3 py-2 text-sm font-medium" style={{background:C.red50,borderColor:C.red100,color:C.red500}}>{error}</div>}
+            {message && <div className="rounded-xl border px-3 py-2 text-sm font-medium" style={{background:C.olive50,borderColor:C.olive100,color:C.olive500}}>{message}</div>}
+            <Btn variant="primary" size="lg" className="w-full justify-center" disabled={loading}>
+              {loading ? "Creating account..." : "Create Account"}
+            </Btn>
+          </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1" style={{background:C.border}} />
+            <span className="text-xs font-semibold uppercase" style={{color:C.textMuted}}>or</span>
+            <div className="h-px flex-1" style={{background:C.border}} />
+          </div>
+
+          <button type="button" onClick={submitGoogleLogin} disabled={googleLoading}
+            className="w-full inline-flex items-center justify-center gap-3 rounded-[10px] border bg-white px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            style={{borderColor:C.border,color:C.textPrimary}}>
+            <GoogleIcon />
+            {googleLoading ? "Opening Google..." : "Sign up with Google"}
+          </button>
         </div>
       </div>
     </div>
@@ -2498,6 +2661,8 @@ function ErrorPage({ code, title, description, onBack }: { code:string; title:st
 // ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App({ initialPage }: { initialPage?: AppPage }) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [view, setView]           = useState<ViewMode>("auth");
   const [authPage, setAuthPage]   = useState<AuthView>("login");
   const [role, setRole]           = useState<Role>("hod");
@@ -2511,13 +2676,58 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     try { router.push(path); } catch (e) { /* noop during build-time */ }
   };
 
-  const handleLogin = () => {
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("OAuth Error:", error.message);
+      alert(`Error signing in: ${error.message}`);
+    }
+  };
+
+  const handleLogin = async (email:string, password:string) => {
+    if (!email || !password) return "Enter your email and password.";
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) return error.message;
+    if (data.user) openAppForUser(data.user);
+    return null;
+  };
+
+  const handleSignup = async (name:string, email:string, password:string) => {
+    if (!name || !email || !password) return "Enter your name, email, and password.";
+    if (password.length < 6) return "Password must be at least 6 characters.";
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { full_name: name, role },
+      },
+    });
+
+    if (error) return error.message;
+    if (data.session?.user) openAppForUser(data.session.user);
+    return null;
+  };
+
+  const openAppForUser = (authUser: SupabaseUser) => {
+    setUser(authUser);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
       window.localStorage.setItem(ROLE_STORAGE_KEY, role);
     }
     setView("app");
-    navigateTo("dashboard");
   };
 
   const handleRoleChange = (r:Role) => {
@@ -2526,7 +2736,9 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     navigateTo("dashboard");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
     if (typeof window !== "undefined") window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setAuthPage("login");
     setView("auth");
@@ -2541,18 +2753,33 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY);
     if (isRole(storedRole)) setRole(storedRole);
 
-    if (
-      window.localStorage.getItem(AUTH_STORAGE_KEY) === "true" ||
-      (initialPage && initialPage !== "dashboard")
-    ) {
-      setView("app");
-    }
-  }, [initialPage]);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        openAppForUser(data.user);
+      } else {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        setView("auth");
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        openAppForUser(session.user);
+      } else {
+        setUser(null);
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        setView("auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [initialPage, supabase]);
 
   if(view==="auth") {
     if(authPage==="forgot") return <ForgotPasswordPage onBack={()=>setAuthPage("login")} />;
     if(authPage==="reset")  return <ResetPasswordPage  onBack={()=>setAuthPage("login")} />;
-    return <LoginPage onLogin={handleLogin} onForgot={()=>setAuthPage("forgot")} onRoleChange={handleRoleChange} role={role} />;
+    if(authPage==="signup") return <SignupPage onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} onBack={()=>setAuthPage("login")} onRoleChange={handleRoleChange} role={role} />;
+    return <LoginPage onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} onForgot={()=>setAuthPage("forgot")} onSignup={()=>setAuthPage("signup")} onRoleChange={handleRoleChange} role={role} />;
   }
 
   const Dashboard = role==="hod" ? HODDashboard : role==="coordinator" ? CoordinatorDashboard : FacultyDashboard;
@@ -2597,7 +2824,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopNav role={role} page={page} onPage={navigateTo} onMenu={()=>setMobileOpen(true)} />
+        <TopNav role={role} page={page} onPage={navigateTo} onMenu={()=>setMobileOpen(true)} onLogout={()=>void handleLogout()} />
 
         {/* Demo bar */}
         <div className="border-b px-5 py-2 flex items-center gap-3 text-xs overflow-x-auto flex-shrink-0" style={{background:C.bg,borderColor:C.border}}>
@@ -2612,7 +2839,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
             </button>
           ))}
           <span style={{color:C.border}}>|</span>
-          <button onClick={handleLogout}
+          <button onClick={()=>void handleLogout()}
             className="px-2.5 py-1 rounded-lg bg-white border font-bold flex-shrink-0"
             style={{borderColor:C.border,color:C.textSecondary}}
             onMouseEnter={e=>{ hov(e.currentTarget,"#fff",C.blue200); (e.currentTarget as HTMLElement).style.borderColor=C.blue200; }}
