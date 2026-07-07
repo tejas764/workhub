@@ -17,6 +17,7 @@ import { BOTTOM_NAV, C, NAV_CONFIG, ROLE_LABELS } from "@/constants";
 import { hov, unhov } from "@/lib/ui-utils";
 import { cn } from "@/lib/ui-utils";
 import { Avatar } from "@/components/ui";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChange, currentFaculty, onLogout }: {
   role:Role; page:AppPage; onPage:(p:AppPage)=>void;
@@ -45,11 +46,9 @@ export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChang
   return (
     <aside className={cn("flex flex-col h-screen border-r bg-white transition-all duration-300 flex-shrink-0", collapsed ? "w-16" : "w-60")}
       style={{borderColor:C.border}}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b flex-shrink-0" style={{borderColor:C.border}}>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:C.blue600}}>
-          <span className="text-xs font-black" style={{color:C.blue200}}>W</span>
-        </div>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-4 h-16 border-b flex-shrink-0" style={{borderColor:C.border}}>
+        <BrandLogo className="w-8 h-8" />
         {!collapsed && (
           <div className="flex-1 min-w-0">
             <p className="font-black text-sm leading-tight" style={{color:C.blue600}}>WorkHub AI</p>

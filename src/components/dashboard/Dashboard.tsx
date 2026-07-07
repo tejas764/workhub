@@ -257,33 +257,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
             <SectionHeader title="Pending Approvals" />
 
-            <div className="space-y-2">
-
-              {[{label:"Faculty Leave Request",sub:"Vikram Singh Â· Jun 30"},{label:"Document Upload Review",sub:"NAAC Report Â· Needs HOD sign"},{label:"Task Reassignment",sub:"Lab Inventory Â· Unassigned"}].map((item,i)=>(
-
-                <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl border" style={{background:C.bg,borderColor:C.border}}>
-
-                  <div className="flex-1 min-w-0">
-
-                    <p className="text-xs font-bold truncate" style={{color:C.textPrimary}}>{item.label}</p>
-
-                    <p className="text-[10px]" style={{color:C.textMuted}}>{item.sub}</p>
-
-                  </div>
-
-                  <div className="flex gap-1">
-
-                    <button className="w-6 h-6 rounded-lg flex items-center justify-center" style={{background:C.olive50}}><CheckCircle size={11} style={{color:C.olive300}} /></button>
-
-                    <button className="w-6 h-6 rounded-lg flex items-center justify-center" style={{background:C.red50}}><X size={11} style={{color:C.red300}} /></button>
-
-                  </div>
-
-                </div>
-
-              ))}
-
-            </div>
+            <EmptyState icon={CheckCircle} title="No pending approvals" description="Approval requests will appear here when they are assigned to you." />
 
           </Card>
 
@@ -299,15 +273,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
             </div>
 
-            {["3 faculty above 120% workload threshold","Task completion rate improved 12% this month","2 critical deadlines in the next 48 hours"].map((t,i)=>(
-
-              <p key={i} className="text-xs leading-relaxed mt-1.5" style={{color:C.blue100}}>
-
-                <span style={{color:C.blue200}}>â€º </span>{t}
-
-              </p>
-
-            ))}
+            <p className="text-xs leading-relaxed mt-1.5" style={{color:C.blue100}}>Insights will appear after department activity data is available.</p>
 
           </div>
 
@@ -321,39 +287,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
         <SectionHeader title="Department Activity Feed" subtitle="Real-time actions across all departments" action={<Btn variant="ghost" size="sm">View all</Btn>} />
 
-        <div className="space-y-3">
-
-          {[
-
-            {who:"Prof. Rajan Mehta", action:"uploaded",           what:"Faculty Workload Distribution â€” Semester II",      time:"2h ago"},
-
-            {who:"Dr. Priya Nair",    action:"completed task",      what:"Faculty Feedback Analysis â€” Semester I",           time:"4h ago"},
-
-            {who:"Admin Office",      action:"posted announcement", what:"New Faculty Onboarding â€” Orientation Program",     time:"6h ago"},
-
-            {who:"Dr. Anita Sharma",  action:"scheduled meeting",   what:"Department Faculty Meeting â€” July Curriculum",     time:"1d ago"},
-
-            {who:"Quality Cell",      action:"uploaded",            what:"NAAC Accreditation Report â€” Self Study Document",  time:"1d ago"},
-
-          ].map((item,i)=>(
-
-            <div key={i} className="flex items-center gap-3 py-2.5 border-b last:border-0" style={{borderColor:C.bg}}>
-
-              <Avatar name={item.who} size="sm" />
-
-              <p className="flex-1 text-xs" style={{color:C.textSecondary}}>
-
-                <span className="font-bold" style={{color:C.textPrimary}}>{item.who}</span> {item.action} <span style={{color:C.gray400}}>{item.what}</span>
-
-              </p>
-
-              <p className="text-[10px] flex-shrink-0" style={{color:C.textDisabled}}>{item.time}</p>
-
-            </div>
-
-          ))}
-
-        </div>
+        <EmptyState icon={Bell} title="No activity yet" description="Recent department actions will appear here once real records are available." />
 
       </Card>
 
@@ -698,6 +632,7 @@ export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage
 
 
 // â”€â”€â”€ Faculty Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 
 

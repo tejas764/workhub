@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
   BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
@@ -15,13 +15,14 @@ import {
 import type { Role } from "@/types";
 import { C } from "@/constants";
 import { Btn, GoogleIcon, Input } from "@/components/ui";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleChange, role }: {
   onLogin:(email:string,password:string)=>Promise<string | null>;
   onGoogleLogin:()=>Promise<void>;
   onForgot:()=>void; onSignup:()=>void; onRoleChange:(r:Role)=>void; role:Role;
 }) {
-  const [email, setEmail] = useState("anita.sharma@college.edu");
+  const [email, setEmail] = useState("");
 
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -52,11 +53,7 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
 
         <div className="flex items-center gap-3">
 
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.08)"}}>
-
-            <span className="text-base font-black" style={{color:C.blue200}}>W</span>
-
-          </div>
+          <BrandLogo className="w-10 h-10" />
 
           <div>
 
@@ -74,25 +71,9 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
 
           <p className="text-sm leading-relaxed" style={{color:C.gray200}}>A unified platform for faculty, coordinators, and HODs to collaborate, manage tasks, documents, and meetings.</p>
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
-
-            {[{label:"Departments",val:"8"},{label:"Faculty Members",val:"47"},{label:"Active Tasks",val:"128"},{label:"Meetings / mo",val:"24"}].map(({label,val})=>(
-
-              <div key={label} className="p-4 rounded-2xl border" style={{background:"rgba(255,255,255,0.04)",borderColor:"rgba(255,255,255,0.08)"}}>
-
-                <p className="text-2xl font-black" style={{color:C.blue200}}>{val}</p>
-
-                <p className="text-xs mt-1" style={{color:C.gray300}}>{label}</p>
-
-              </div>
-
-            ))}
-
-          </div>
-
         </div>
 
-        <p className="text-xs" style={{color:C.gray400}}>© 2026 WorkHub AI · All rights reserved</p>
+        <p className="text-xs" style={{color:C.gray400}}>Â© 2026 WorkHub AI Â· All rights reserved</p>
 
       </div>
 
@@ -106,11 +87,7 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
 
             <div className="flex items-center gap-2.5 mb-6 lg:hidden">
 
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background:C.blue600}}>
-
-                <span className="text-xs font-black" style={{color:C.blue200}}>W</span>
-
-              </div>
+              <BrandLogo className="w-8 h-8" />
 
               <span className="font-black" style={{color:C.blue600}}>WorkHub AI</span>
 
@@ -124,27 +101,6 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
 
 
 
-          {/* <div className="mb-6 p-4 rounded-2xl border" style={{background:C.bg, borderColor:C.border}}>
-
-            <p className="text-xs font-black uppercase tracking-widest mb-2.5" style={{color:C.textMuted}}>Demo — Preview as Role</p>
-
-            <div className="flex gap-2">
-
-              {(["hod","coordinator","faculty"] as Role[]).map(r=>(
-
-                <button key={r} onClick={()=>onRoleChange(r)} className="flex-1 py-2 rounded-xl text-xs font-bold border transition-all"
-
-                  style={r===role ? {background:C.blue500,color:"#fff",borderColor:C.blue500} : {background:"#fff",borderColor:C.border,color:C.textSecondary}}>
-
-                  {r==="hod"?"HOD":r==="coordinator"?"Coord.":"Faculty"}
-
-                </button>
-
-              ))}
-
-            </div>
-
-          </div> */}
 
 
 
@@ -224,7 +180,7 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
               Create an account
             </button>
           </p>
-          <p className="mt-4 text-center text-xs" style={{color:C.textDisabled}}>Protected by enterprise SSO · Contact IT for access issues</p>
+          <p className="mt-4 text-center text-xs" style={{color:C.textDisabled}}>Protected by enterprise SSO Â· Contact IT for access issues</p>
         </div>
 
       </div>
@@ -272,9 +228,7 @@ export function SignupPage({ onSignup, onGoogleLogin, onBack, onRoleChange, role
     <div className="min-h-screen flex" style={{background:C.bg}}>
       <div className="hidden lg:flex flex-col justify-between w-2/5 p-12" style={{background:C.blue600}}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.08)"}}>
-            <span className="text-base font-black" style={{color:C.blue200}}>W</span>
-          </div>
+          <BrandLogo className="w-10 h-10" />
           <div>
             <p className="font-black text-lg leading-tight text-white">WorkHub AI</p>
             <p className="text-xs" style={{color:C.gray300}}>Dept. Management System</p>
@@ -284,7 +238,7 @@ export function SignupPage({ onSignup, onGoogleLogin, onBack, onRoleChange, role
           <h2 className="text-4xl font-black leading-tight mb-4 text-white">Create your department workspace account.</h2>
           <p className="text-sm leading-relaxed" style={{color:C.gray200}}>Sign up with your college email or use Google to join WorkHub AI.</p>
         </div>
-        <p className="text-xs" style={{color:C.gray400}}>© 2026 WorkHub AI · All rights reserved</p>
+        <p className="text-xs" style={{color:C.gray400}}>Â© 2026 WorkHub AI Â· All rights reserved</p>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-8">
@@ -297,20 +251,9 @@ export function SignupPage({ onSignup, onGoogleLogin, onBack, onRoleChange, role
             <p className="text-sm" style={{color:C.textSecondary}}>Start with your college workspace details</p>
           </div>
 
-          {/* <div className="mb-6 p-4 rounded-2xl border" style={{background:C.bg, borderColor:C.border}}>
-            <p className="text-xs font-black uppercase tracking-widest mb-2.5" style={{color:C.textMuted}}>Demo - Preview as Role</p>
-            <div className="flex gap-2">
-              {(["hod","coordinator","faculty"] as Role[]).map(r=>(
-                <button key={r} onClick={()=>onRoleChange(r)} className="flex-1 py-2 rounded-xl text-xs font-bold border transition-all"
-                  style={r===role ? {background:C.blue500,color:"#fff",borderColor:C.blue500} : {background:"#fff",borderColor:C.border,color:C.textSecondary}}>
-                  {r==="hod"?"HOD":r==="coordinator"?"Coord.":"Faculty"}
-                </button>
-              ))}
-            </div>
-          </div> */}
 
           <form onSubmit={e=>{ e.preventDefault(); void submitSignup(); }} className="space-y-4">
-            <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Full name</label><Input value={name} onChange={setName} placeholder="Dr. Anita Sharma" icon={User} /></div>
+            <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Full name</label><Input value={name} onChange={setName} placeholder="Your full name" icon={User} /></div>
             <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Email address</label><Input value={email} onChange={setEmail} placeholder="you@college.edu" icon={Mail} /></div>
             <div><label className="text-sm font-bold block mb-1.5" style={{color:C.textPrimary}}>Password</label><Input value={pw} onChange={setPw} type="password" placeholder="At least 6 characters" icon={Lock} /></div>
             {error && <div className="rounded-xl border px-3 py-2 text-sm font-medium" style={{background:C.red50,borderColor:C.red100,color:C.red500}}>{error}</div>}
@@ -437,4 +380,5 @@ export function ResetPasswordPage({ onBack }: { onBack:()=>void }) {
 
 
 
-// ─── HOD Dashboard ────────────────────────────────────────────────────────────
+// â”€â”€â”€ HOD Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+

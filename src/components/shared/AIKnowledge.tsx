@@ -101,7 +101,7 @@ export function AIKnowledgePage() {
             <div key={i} className={cn("flex gap-3",m.from==="user"?"flex-row-reverse":"flex-row")}>
               {m.from==="ai"
                 ? <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:`linear-gradient(135deg,${C.blue600},${C.blue300})`}}><Bot size={14} className="text-white" /></div>
-                : <Avatar name="Dr. Anita Sharma" size="sm" className="flex-shrink-0" />
+                : <Avatar name="Current User" size="sm" className="flex-shrink-0" />
               }
               <div className="max-w-lg rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm"
                 style={m.from==="user"?{background:C.blue500,color:"#fff"}:{background:"#fff",border:`1px solid ${C.border}`,color:C.textPrimary}}>
