@@ -12,15 +12,16 @@ import {
   List, Award, SlidersHorizontal, LayoutGrid, Layers,
   FolderOpen, Hash,
 } from "lucide-react";
-import type { AppPage, Role } from "@/types";
+import type { AppPage, FacultyMember, Role } from "@/types";
 import { BOTTOM_NAV, C, NAV_CONFIG, ROLE_LABELS } from "@/constants";
 import { hov, unhov } from "@/lib/ui-utils";
 import { cn } from "@/lib/ui-utils";
 import { Avatar } from "@/components/ui";
 
-export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChange }: {
+export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChange, currentFaculty, onLogout }: {
   role:Role; page:AppPage; onPage:(p:AppPage)=>void;
-  collapsed:boolean; onCollapse:()=>void; onRoleChange:(r:Role)=>void;
+  collapsed:boolean; onCollapse:()=>void; onRoleChange:(r:Role)=>void;
+  currentFaculty:FacultyMember; onLogout:()=>void;
 }) {
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
@@ -112,12 +113,14 @@ export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChang
       {!collapsed && (
         <div className="px-3 pb-3 pt-2 border-t flex-shrink-0" style={{borderColor:C.border}}>
           <div className="flex items-center gap-2.5">
-            <Avatar name="Dr. Anita Sharma" size="sm" />
+            <Avatar name={currentFaculty.name} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate" style={{color:C.textPrimary}}>Dr. Anita Sharma</p>
-              <p className="text-[10px] truncate" style={{color:C.textMuted}}>anita@college.edu</p>
+              <p className="text-xs font-bold truncate" style={{color:C.textPrimary}}>{currentFaculty.name}</p>
+              <p className="text-[10px] truncate" style={{color:C.textMuted}}>{currentFaculty.email}</p>
             </div>
-            <LogOut size={13} className="cursor-pointer flex-shrink-0" style={{color:C.textMuted}} />
+            <button onClick={onLogout} className="flex-shrink-0" style={{color:C.textMuted}} aria-label="Sign out">
+              <LogOut size={13} />
+            </button>
           </div>
         </div>
       )}

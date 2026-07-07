@@ -1,4 +1,4 @@
-import type { FacultyMember } from "@/types";
+import type { Announcement, DocItem, FacultyMember, Meeting, NotifItem, TaskItem } from "@/types";
 
 export const FACULTY_DATA: FacultyMember[] = [
   { id:1,  name:"Dr. Anita Sharma",   email:"anita.sharma@college.edu",   phone:"+91 98765 43210", designation:"Professor",          department:"Computer Science", role:"HOD",         status:"Active",   joined:"2015-08-01" },

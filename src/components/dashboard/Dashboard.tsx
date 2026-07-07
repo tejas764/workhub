@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
   BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
@@ -23,7 +23,7 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
+export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
 
   return (
 
@@ -33,9 +33,9 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
         <div>
 
-          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, Dr.Tejas Bhandarkar 👋</h1>
+          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Monday, 07 July 2026 · Computer Science Department</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.department} Department</p>
 
         </div>
 
@@ -197,7 +197,7 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
                   </div>
 
-                  <p className="text-[10px]" style={{color:C.textMuted}}>{a.category} · {a.date}</p>
+                  <p className="text-[10px]" style={{color:C.textMuted}}>{a.category} Â· {a.date}</p>
 
                 </div>
 
@@ -237,7 +237,7 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
                   <p className="text-xs font-bold mb-0.5 line-clamp-1" style={{color:C.textPrimary}}>{m.title}</p>
 
-                  <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} · {m.location}</p>
+                  <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} Â· {m.location}</p>
 
                 </div>
 
@@ -259,7 +259,7 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
             <div className="space-y-2">
 
-              {[{label:"Faculty Leave Request",sub:"Vikram Singh · Jun 30"},{label:"Document Upload Review",sub:"NAAC Report · Needs HOD sign"},{label:"Task Reassignment",sub:"Lab Inventory · Unassigned"}].map((item,i)=>(
+              {[{label:"Faculty Leave Request",sub:"Vikram Singh Â· Jun 30"},{label:"Document Upload Review",sub:"NAAC Report Â· Needs HOD sign"},{label:"Task Reassignment",sub:"Lab Inventory Â· Unassigned"}].map((item,i)=>(
 
                 <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl border" style={{background:C.bg,borderColor:C.border}}>
 
@@ -303,7 +303,7 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
               <p key={i} className="text-xs leading-relaxed mt-1.5" style={{color:C.blue100}}>
 
-                <span style={{color:C.blue200}}>› </span>{t}
+                <span style={{color:C.blue200}}>â€º </span>{t}
 
               </p>
 
@@ -325,15 +325,15 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
           {[
 
-            {who:"Prof. Rajan Mehta", action:"uploaded",           what:"Faculty Workload Distribution — Semester II",      time:"2h ago"},
+            {who:"Prof. Rajan Mehta", action:"uploaded",           what:"Faculty Workload Distribution â€” Semester II",      time:"2h ago"},
 
-            {who:"Dr. Priya Nair",    action:"completed task",      what:"Faculty Feedback Analysis — Semester I",           time:"4h ago"},
+            {who:"Dr. Priya Nair",    action:"completed task",      what:"Faculty Feedback Analysis â€” Semester I",           time:"4h ago"},
 
-            {who:"Admin Office",      action:"posted announcement", what:"New Faculty Onboarding — Orientation Program",     time:"6h ago"},
+            {who:"Admin Office",      action:"posted announcement", what:"New Faculty Onboarding â€” Orientation Program",     time:"6h ago"},
 
-            {who:"Dr. Anita Sharma",  action:"scheduled meeting",   what:"Department Faculty Meeting — July Curriculum",     time:"1d ago"},
+            {who:"Dr. Anita Sharma",  action:"scheduled meeting",   what:"Department Faculty Meeting â€” July Curriculum",     time:"1d ago"},
 
-            {who:"Quality Cell",      action:"uploaded",            what:"NAAC Accreditation Report — Self Study Document",  time:"1d ago"},
+            {who:"Quality Cell",      action:"uploaded",            what:"NAAC Accreditation Report â€” Self Study Document",  time:"1d ago"},
 
           ].map((item,i)=>(
 
@@ -365,9 +365,9 @@ export function HODDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
 
 
-// ─── Coordinator Dashboard ────────────────────────────────────────────────────
+// â”€â”€â”€ Coordinator Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
+export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
 
   return (
 
@@ -377,9 +377,9 @@ export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
         <div>
 
-          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, Prof. Mehta 👋</h1>
+          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Monday, 30 June 2026 · Department Coordinator</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.department} · Department Coordinator</p>
 
         </div>
 
@@ -415,7 +415,7 @@ export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
             {[
 
-              {time:"09:00",title:"Faculty Sync — Quick Standup",         type:"meeting",done:true},
+              {time:"09:00",title:"Faculty Sync â€” Quick Standup",         type:"meeting",done:true},
 
               {time:"10:30",title:"Review NAAC Document Submissions",     type:"task",   done:false},
 
@@ -497,7 +497,7 @@ export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
                     <p className="text-xs font-bold truncate" style={{color:C.textPrimary}}>{d.title}</p>
 
-                    <p className="text-[10px]" style={{color:C.textMuted}}>{d.size} · {d.date}</p>
+                    <p className="text-[10px]" style={{color:C.textMuted}}>{d.size} Â· {d.date}</p>
 
                   </div>
 
@@ -519,9 +519,9 @@ export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
             </div>
 
-            {["2 tasks nearing deadlines","Reschedule July 5 meeting — 3 conflicts","5 documents pending AI summary"].map((r,i)=>(
+            {["2 tasks nearing deadlines","Reschedule July 5 meeting â€” 3 conflicts","5 documents pending AI summary"].map((r,i)=>(
 
-              <p key={i} className="text-xs mt-1" style={{color:C.sky400}}>· {r}</p>
+              <p key={i} className="text-xs mt-1" style={{color:C.sky400}}>Â· {r}</p>
 
             ))}
 
@@ -539,9 +539,9 @@ export function CoordinatorDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
 
 
-// ─── Faculty Dashboard ────────────────────────────────────────────────────────
+// â”€â”€â”€ Faculty Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
+export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
 
   return (
 
@@ -551,9 +551,9 @@ export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
         <div>
 
-          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, Dr. Nair 👋</h1>
+          <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Monday, 30 June 2026 · Faculty · Computer Science</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.role} · {currentFaculty.department}</p>
 
         </div>
 
@@ -585,7 +585,7 @@ export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
           <div className="space-y-3">
 
-            {TASKS_DATA.filter(t=>t.assignee==="Dr. Priya Nair").map(t=>(
+            {TASKS_DATA.filter(t=>t.assignee===currentFaculty.name).map(t=>(
 
               <div key={t.id} className="p-4 rounded-2xl border" style={{background:C.bg,borderColor:C.border}}>
 
@@ -641,7 +641,7 @@ export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
                     <p className="text-xs font-bold line-clamp-1" style={{color:C.textPrimary}}>{m.title}</p>
 
-                    <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} · {m.location}</p>
+                    <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} Â· {m.location}</p>
 
                   </div>
 
@@ -675,7 +675,7 @@ export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
                   </div>
 
-                  <p className="text-[10px] mt-0.5" style={{color:C.textMuted}}>{a.date} · {a.category}</p>
+                  <p className="text-[10px] mt-0.5" style={{color:C.textMuted}}>{a.date} Â· {a.category}</p>
 
                 </div>
 
@@ -697,6 +697,7 @@ export function FacultyDashboard({ onPage }: { onPage:(p:AppPage)=>void }) {
 
 
 
-// ─── Faculty Management ───────────────────────────────────────────────────────
+// â”€â”€â”€ Faculty Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 

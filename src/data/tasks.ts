@@ -1,4 +1,4 @@
-import type { TaskItem } from "@/types";
+import type { NotifItem, TaskItem } from "@/types";
 
 export const TASKS_DATA: TaskItem[] = [
   { id:1, title:"Prepare Semester II Timetable Draft",        assignee:"Prof. Rajan Mehta",  priority:"High",   status:"In Progress", dueDate:"2026-07-05", department:"Computer Science", description:"Draft the complete timetable for semester II including lab sessions and tutorial slots." },

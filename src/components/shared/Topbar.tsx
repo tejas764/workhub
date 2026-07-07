@@ -12,12 +12,12 @@ import {
   List, Award, SlidersHorizontal, LayoutGrid, Layers,
   FolderOpen, Hash,
 } from "lucide-react";
-import type { AppPage, Role } from "@/types";
+import type { AppPage, FacultyMember, Role } from "@/types";
 import { BREADCRUMBS, C, ROLE_LABELS } from "@/constants";
 import { hov, unhov } from "@/lib/ui-utils";
 import { Avatar } from "@/components/ui";
 
-export function TopNav({ role, page, onPage, onMenu, onLogout }: { role:Role; page:AppPage; onPage:(p:AppPage)=>void; onMenu:()=>void; onLogout:()=>void }) {
+export function TopNav({ role, page, onPage, onMenu, onLogout, currentFaculty }: { role:Role; page:AppPage; onPage:(p:AppPage)=>void; onMenu:()=>void; onLogout:()=>void; currentFaculty:FacultyMember }) {
   const [search, setSearch] = useState("");
   const [showUser, setShowUser] = useState(false);
   const crumbs = BREADCRUMBS[page] ?? ["Home"];
@@ -63,9 +63,9 @@ export function TopNav({ role, page, onPage, onMenu, onLogout }: { role:Role; pa
       <div className="relative">
         <button onClick={()=>setShowUser(!showUser)} className="flex items-center gap-2 rounded-xl px-2 py-1.5"
           onMouseEnter={e=>hov(e.currentTarget,C.bg)} onMouseLeave={e=>unhov(e.currentTarget,"transparent")}>
-          <Avatar name="Dr. Anita Sharma" size="sm" />
+          <Avatar name={currentFaculty.name} size="sm" />
           <div className="hidden md:block text-left">
-            <p className="text-xs font-bold leading-tight" style={{color:C.textPrimary}}>Dr. Anita Sharma</p>
+            <p className="text-xs font-bold leading-tight" style={{color:C.textPrimary}}>{currentFaculty.name}</p>
             <p className="text-[10px] leading-tight" style={{color:C.textMuted}}>{ROLE_LABELS[role]}</p>
           </div>
           <ChevronDown size={13} style={{color:C.textMuted}} />
@@ -73,8 +73,8 @@ export function TopNav({ role, page, onPage, onMenu, onLogout }: { role:Role; pa
         {showUser && (
           <div className="absolute right-0 top-full mt-2 w-52 bg-white border shadow-xl py-2 z-30" style={{borderColor:C.border, borderRadius:14}}>
             <div className="px-3 py-2 border-b mb-1" style={{borderColor:C.border}}>
-              <p className="text-xs font-bold" style={{color:C.textPrimary}}>Dr. Anita Sharma</p>
-              <p className="text-[10px]" style={{color:C.textMuted}}>anita.sharma@college.edu</p>
+              <p className="text-xs font-bold" style={{color:C.textPrimary}}>{currentFaculty.name}</p>
+              <p className="text-[10px]" style={{color:C.textMuted}}>{currentFaculty.email}</p>
             </div>
             {[{label:"View Profile",icon:User,pg:"profile"as AppPage},{label:"Settings",icon:Settings,pg:"settings"as AppPage},{label:"Help",icon:HelpCircle,pg:"help"as AppPage}].map(({label,icon:Icon,pg})=>(
               <button key={label} onClick={()=>{ onPage(pg); setShowUser(false); }}

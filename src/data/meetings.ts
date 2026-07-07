@@ -1,4 +1,4 @@
-import type { Meeting } from "@/types";
+import type { DocItem, Meeting, NotifItem, TaskItem } from "@/types";
 
 export const MEETINGS_DATA: Meeting[] = [
   { id:1, title:"Department Faculty Meeting — July Curriculum Planning", organizer:"Dr. Anita Sharma", date:"2026-07-03", time:"10:00 AM", participants:14, status:"Upcoming",  department:"Computer Science", location:"Conference Room A" },

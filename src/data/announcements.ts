@@ -1,4 +1,4 @@
-import type { Announcement } from "@/types";
+import type { Announcement, DocItem, Meeting, NotifItem, TaskItem } from "@/types";
 
 export const ANNOUNCEMENTS_DATA: Announcement[] = [
   { id:1, title:"Annual Academic Review Meeting — All HODs to Attend",  category:"Academic",   department:"All Departments",  postedBy:"Dr. Anita Sharma",  date:"2026-06-28", pinned:true,  hasAttachment:true,  summary:"Mandatory attendance for all HODs. Agenda includes curriculum review and faculty performance metrics for Q2." },

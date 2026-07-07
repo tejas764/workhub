@@ -1,4 +1,4 @@
-import type { AppPage } from "@/types";
+import type { Announcement, AppPage, DocItem, FacultyMember, Meeting, NotifItem, TaskItem } from "@/types";
 
 export const BREADCRUMBS: Record<AppPage, string[]> = {
   dashboard: ["Home","Dashboard"], faculty: ["Home","Faculty"],

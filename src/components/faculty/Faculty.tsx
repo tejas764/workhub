@@ -23,7 +23,7 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function FacultyPage({ role }: { role:Role }) {
+export function FacultyPage({ role, facultyMembers, loading = false }: { role:Role; facultyMembers:FacultyMember[]; loading?:boolean }) {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All Departments");
   const [roleFilter, setRoleFilter] = useState("All Roles");
@@ -33,7 +33,7 @@ export function FacultyPage({ role }: { role:Role }) {
   const [pg, setPg] = useState(1);
   const isHOD = role === "hod";
 
-  const filtered = FACULTY_DATA.filter(f=>{
+  const filtered = facultyMembers.filter(f=>{
     const q = search.toLowerCase();
     return (f.name.toLowerCase().includes(q)||f.email.toLowerCase().includes(q)) &&
       (deptFilter==="All Departments"||f.department===deptFilter) &&
@@ -46,7 +46,7 @@ export function FacultyPage({ role }: { role:Role }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-black" style={{color:C.blue600}}>{isHOD?"Faculty Management":"Faculty Directory"}</h1>
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>{FACULTY_DATA.length} faculty members across 8 departments</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>{loading ? "Loading faculty from Supabase..." : `${facultyMembers.length} faculty members from Supabase`}</p>
         </div>
         <div className="flex gap-3">
           <Btn variant="outline" size="sm" icon={Download}>Export</Btn>
@@ -72,7 +72,7 @@ export function FacultyPage({ role }: { role:Role }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice((pg-1)*5,pg*5).map(f=>(
+              {filtered.slice((pg-1)*5,pg*5).map(f=>(
                 <tr key={f.id} className="cursor-pointer" style={{borderBottom:`1px solid ${C.bg}`}}
                   onClick={()=>setSelected(f)}
                   onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=C.bg}
@@ -103,7 +103,14 @@ export function FacultyPage({ role }: { role:Role }) {
                   </td>
                 </tr>
               ))}
-            </tbody>
+              {!loading && filtered.length===0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10">
+                    <EmptyState icon={Users} title="No faculty found" description="No matching faculty records were returned from Supabase." />
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
         <div className="px-5"><Pagination current={pg} total={filtered.length} onChange={setPg} /></div>

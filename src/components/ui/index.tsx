@@ -13,7 +13,7 @@ import {
   FolderOpen, Hash,
 } from "lucide-react";
 import { C } from "@/constants";
-import { cn, initials } from "@/lib/ui-utils";
+import { cn, hov, initials, unhov } from "@/lib/ui-utils";
 
 export function Avatar({ name, size="md", className }: { name:string; size?:"sm"|"md"|"lg"|"xl"; className?:string }) {
   const sz = { sm:"w-8 h-8 text-xs", md:"w-9 h-9 text-sm", lg:"w-12 h-12 text-base", xl:"w-20 h-20 text-xl" };

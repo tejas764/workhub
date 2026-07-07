@@ -1,4 +1,4 @@
-import type { DocItem } from "@/types";
+import type { DocItem, NotifItem, TaskItem } from "@/types";
 
 export const DOCUMENTS_DATA: DocItem[] = [
   { id:1, title:"Curriculum Framework 2026–27 — CS Department",   category:"Academic",       uploadedBy:"Dr. Anita Sharma",  date:"2026-06-25", type:"pdf",  size:"2.4 MB",  hasSummary:true  },

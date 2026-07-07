@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import type { AppPage, AuthView, Role, ViewMode } from "@/types";
+import type { AppPage, AuthView, FacultyMember, Role, ViewMode } from "@/types";
 import { AUTH_STORAGE_KEY, ROLE_STORAGE_KEY, isRole } from "@/constants";
+import { FACULTY_DATA } from "@/data";
+import { facultyMemberFromRow, fallbackFacultyFromUser, roleFromFaculty } from "@/lib/faculty-profile";
 import { LoginPage, SignupPage, ForgotPasswordPage, ResetPasswordPage } from "@/components/shared/Auth";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { TopNav } from "@/components/shared/Topbar";
@@ -31,6 +33,9 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [currentFaculty, setCurrentFaculty] = useState<FacultyMember>(() => fallbackFacultyFromUser(null));
+  const [facultyMembers, setFacultyMembers] = useState<FacultyMember[]>(FACULTY_DATA);
+  const [facultyLoading, setFacultyLoading] = useState(false);
   const [view, setView]           = useState<ViewMode>("auth");
   const [authPage, setAuthPage]   = useState<AuthView>("login");
   const [role, setRole]           = useState<Role>("hod");
@@ -91,6 +96,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
   const openAppForUser = (authUser: SupabaseUser) => {
     setUser(authUser);
+    setCurrentFaculty(fallbackFacultyFromUser(authUser));
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
       window.localStorage.setItem(ROLE_STORAGE_KEY, role);
@@ -107,6 +113,8 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setCurrentFaculty(fallbackFacultyFromUser(null));
+    setFacultyMembers(FACULTY_DATA);
     if (typeof window !== "undefined") window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setAuthPage("login");
     setView("auth");
@@ -143,6 +151,52 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     return () => subscription.unsubscribe();
   }, [initialPage, supabase]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const loadFaculty = async () => {
+      setFacultyLoading(true);
+
+      const { data, error } = await supabase
+        .from("faculty")
+        .select("*");
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Faculty fetch error:", error.message);
+        const fallback = fallbackFacultyFromUser(user);
+        setCurrentFaculty(fallback);
+        setFacultyMembers(FACULTY_DATA);
+        setFacultyLoading(false);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      const mapped = rows.map((row, index) => facultyMemberFromRow(row, index));
+      const fallback = fallbackFacultyFromUser(user);
+      const current = mapped.find(f => f.email.toLowerCase() === (user.email ?? "").toLowerCase())
+        ?? mapped.find(f => String(f.id) === user.id)
+        ?? fallback;
+      const nextRole = roleFromFaculty(current);
+
+      setCurrentFaculty(current);
+      setFacultyMembers(mapped.length ? mapped : [fallback]);
+      setRole(nextRole);
+      if (typeof window !== "undefined") window.localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
+      setFacultyLoading(false);
+    };
+
+    void loadFaculty();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
+
+
   if(view==="auth") {
     if(authPage==="forgot") return <ForgotPasswordPage onBack={()=>setAuthPage("login")} />;
     if(authPage==="reset")  return <ResetPasswordPage  onBack={()=>setAuthPage("login")} />;
@@ -154,8 +208,8 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
   const renderPage = () => {
     switch(page) {
-      case "dashboard":     return <Dashboard onPage={navigateTo} />;
-      case "faculty":       return <FacultyPage role={role} />;
+      case "dashboard":     return <Dashboard onPage={navigateTo} currentFaculty={currentFaculty} />;
+      case "faculty":       return <FacultyPage role={role} facultyMembers={facultyMembers} loading={facultyLoading} />;
       case "announcements": return <AnnouncementsPage role={role} />;
       case "meetings":      return <MeetingsPage role={role} />;
       case "documents":     return <DocumentsPage />;
@@ -166,13 +220,13 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
         return <ReportsPage />;
       case "department":    return <DepartmentPage role={role} />;
       case "notifications": return <NotificationsPage />;
-      case "profile":       return <ProfilePage />;
+      case "profile":       return <ProfilePage currentFaculty={currentFaculty} />;
       case "settings":      return <SettingsPage />;
       case "help":          return <HelpPage />;
       case "e404": return <ErrorPage code="404" title="Page Not Found"        description="The page you're looking for doesn't exist or has been moved." onBack={()=>setPage("dashboard")} />;
       case "e403": return <ErrorPage code="403" title="Access Forbidden"      description="You don't have permission to access this page."              onBack={()=>setPage("dashboard")} />;
       case "e500": return <ErrorPage code="500" title="Internal Server Error" description="Something went wrong on our end. Please try again."          onBack={()=>setPage("dashboard")} />;
-      default:              return <Dashboard onPage={navigateTo} />;
+      default:              return <Dashboard onPage={navigateTo} currentFaculty={currentFaculty} />;
     }
   };
 
@@ -182,17 +236,17 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={()=>setMobileOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 z-50">
-            <Sidebar role={role} page={page} onPage={p=>{ navigateTo(p); setMobileOpen(false); }} collapsed={false} onCollapse={()=>setMobileOpen(false)} onRoleChange={handleRoleChange} />
+            <Sidebar role={role} page={page} onPage={p=>{ navigateTo(p); setMobileOpen(false); }} collapsed={false} onCollapse={()=>setMobileOpen(false)} onRoleChange={handleRoleChange} currentFaculty={currentFaculty} onLogout={()=>void handleLogout()} />
           </div>
         </div>
       )}
 
       <div className="hidden md:flex">
-        <Sidebar role={role} page={page} onPage={navigateTo} collapsed={collapsed} onCollapse={()=>setCollapsed(!collapsed)} onRoleChange={handleRoleChange} />
+        <Sidebar role={role} page={page} onPage={navigateTo} collapsed={collapsed} onCollapse={()=>setCollapsed(!collapsed)} onRoleChange={handleRoleChange} currentFaculty={currentFaculty} onLogout={()=>void handleLogout()} />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopNav role={role} page={page} onPage={navigateTo} onMenu={()=>setMobileOpen(true)} onLogout={()=>void handleLogout()} />
+        <TopNav role={role} page={page} onPage={navigateTo} onMenu={()=>setMobileOpen(true)} onLogout={()=>void handleLogout()} currentFaculty={currentFaculty} />
 
         {/* Demo bar */}
         <div className="border-b px-5 py-2 flex items-center gap-3 text-xs overflow-x-auto flex-shrink-0" style={{background:C.bg,borderColor:C.border}}>
