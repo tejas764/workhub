@@ -12,16 +12,17 @@ import {
   Plus,
   Video,
   Pin,
+  Check,
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, activeRole, tasks, faculty } = useAuth();
+  const { user, activeRole, tasks = [], faculty = [] } = useAuth();
 
   const [announcements, setAnnouncements] = useState([]);
   const [meetings, setMeetings] = useState([]);
 
   useEffect(() => {
-    // Simulated fetch (ready for Supabase integration)
+    // Simulated fetch (ready for backend / Supabase integration)
     const mockAnnouncements = [
       {
         id: 1,
@@ -30,7 +31,8 @@ export default function DashboardPage() {
         date: "Jul 22, 2026",
         tag: "Academic",
         pinned: true,
-        content: "All faculty members are requested to upload draft question papers by next Friday.",
+        content:
+          "All faculty members are requested to upload draft question papers by next Friday.",
         roles: ["Head of Department", "Dept. Coordinator", "Faculty Member"],
       },
       {
@@ -50,7 +52,8 @@ export default function DashboardPage() {
         date: "Jul 20, 2026",
         tag: "Funding",
         pinned: false,
-        content: "Submit proposals for Q3 internal funding grants via the document portal.",
+        content:
+          "Submit proposals for Q3 internal funding grants via the document portal.",
         roles: ["Head of Department", "Faculty Member"],
       },
     ];
@@ -63,6 +66,7 @@ export default function DashboardPage() {
         date: "Today",
         location: "Conference Room B / Zoom",
         isOnline: true,
+        completed: false,
         roles: ["Head of Department", "Dept. Coordinator", "Faculty Member"],
       },
       {
@@ -72,6 +76,7 @@ export default function DashboardPage() {
         date: "Tomorrow",
         location: "HOD Office",
         isOnline: false,
+        completed: false,
         roles: ["Head of Department", "Dept. Coordinator"],
       },
     ];
@@ -79,6 +84,12 @@ export default function DashboardPage() {
     setAnnouncements(mockAnnouncements);
     setMeetings(mockMeetings);
   }, []);
+
+  const handleToggleMeeting = (id) => {
+    setMeetings((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, completed: !m.completed } : m))
+    );
+  };
 
   const filteredAnnouncements = announcements.filter(
     (item) => !item.roles || item.roles.includes(activeRole)
@@ -116,7 +127,7 @@ export default function DashboardPage() {
 
       {/* KPI Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Faculty</p>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{faculty.length}</h3>
@@ -126,7 +137,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pending Tasks</p>
             <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{pendingTasks.length}</h3>
@@ -136,7 +147,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Completed Tasks</p>
             <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{completedTasks.length}</h3>
@@ -146,7 +157,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Upcoming Meetings</p>
             <h3 className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{filteredMeetings.length}</h3>
@@ -166,17 +177,17 @@ export default function DashboardPage() {
               <Megaphone className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Department Bulletin</h2>
             </div>
-            <span className="text-xs font-semibold text-slate-400">{filteredAnnouncements.length} updates</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{filteredAnnouncements.length} updates</span>
           </div>
 
           <div className="space-y-3">
             {filteredAnnouncements.length === 0 ? (
-              <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-500">
+              <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
                 No announcements for this role.
               </div>
             ) : (
               filteredAnnouncements.map((item) => (
-                <div key={item.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2 relative">
+                <div key={item.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors space-y-2 relative">
                   {item.pinned && <Pin className="w-3.5 h-3.5 absolute top-5 right-5 text-indigo-500 fill-indigo-500/20" />}
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
@@ -186,8 +197,8 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">{item.title}</h3>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{item.content}</p>
-                  <div className="pt-2 text-[11px] font-semibold text-slate-400">
-                    Posted by: <span className="text-slate-700 dark:text-slate-300">{item.author}</span>
+                  <div className="pt-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Posted by: <span className="text-slate-800 dark:text-slate-200">{item.author}</span>
                   </div>
                 </div>
               ))
@@ -197,32 +208,49 @@ export default function DashboardPage() {
 
         {/* Upcoming Meetings Schedule */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Upcoming Meetings</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Upcoming Meetings</h2>
+            </div>
           </div>
 
           <div className="space-y-3">
             {filteredMeetings.length === 0 ? (
-              <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-500">
+              <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
                 No meetings scheduled for this role.
               </div>
             ) : (
               filteredMeetings.map((m) => (
-                <div key={m.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                <div key={m.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">{m.date}</span>
-                    {m.isOnline && (
-                      <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500">
-                        <Video className="w-3 h-3" /> Online
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {m.isOnline && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                          <Video className="w-3 h-3" /> Online
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleToggleMeeting(m.id)}
+                        className={`p-1 rounded-md text-[10px] font-semibold border transition-all ${
+                          m.completed
+                            ? "bg-emerald-500 text-white border-emerald-600"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-500 hover:text-white"
+                        }`}
+                        title={m.completed ? "Mark as Pending" : "Mark as Completed"}
+                      >
+                        <Check className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">{m.title}</h4>
+                  <h4 className={`font-bold text-xs ${m.completed ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-slate-100"}`}>
+                    {m.title}
+                  </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" /> {m.time}
                   </p>
-                  <p className="text-[10px] text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2 mt-2">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/80 pt-2 mt-2">
                     📍 {m.location}
                   </p>
                 </div>
