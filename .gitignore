@@ -1,3 +1,19 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Next.js Build & Cache (THIS IS WHAT WAS MISSING)
+.next/
+/out/
+/build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Vite / General React Build Outputs
+dist/
+dist-ssr/
+
 # Logs
 logs
 *.log
@@ -7,12 +23,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment Variables
+.env*.local
+.env
 
-# Editor directories and files
+# Editor Directories & Files
 .vscode/*
 !.vscode/extensions.json
 .idea
