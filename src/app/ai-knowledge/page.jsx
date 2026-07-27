@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import {
   Sparkles,
@@ -8,13 +10,10 @@ import {
   Bot,
   User,
   Download,
-  Trash2,
-  Filter,
-  CheckCircle2,
 } from "lucide-react";
 
-export default function AIKnowledge() {
-  const [activeTab, setActiveTab] = useState("chat"); // 'chat' or 'documents'
+export default function AIKnowledgePage() {
+  const [activeTab, setActiveTab] = useState("chat");
   const [query, setQuery] = useState("");
   const [chatHistory, setChatHistory] = useState([
     {
@@ -23,8 +22,7 @@ export default function AIKnowledge() {
     },
   ]);
 
-  // Integrated Document Repository State
-  const [documents, setDocuments] = useState([
+  const [documents] = useState([
     { id: 1, name: "CS101_Syllabus_2026.pdf", category: "Syllabus", uploadedBy: "Dr. Aris Thorne", date: "Jul 15, 2026", size: "2.4 MB" },
     { id: 2, name: "Faculty_Leave_Policy_v2.pdf", category: "Policy", uploadedBy: "HOD Office", date: "Jun 28, 2026", size: "1.1 MB" },
     { id: 3, name: "Department_Research_Guidelines.pdf", category: "Research", uploadedBy: "Prof. Elena Rostova", date: "Jul 02, 2026", size: "3.8 MB" },
@@ -33,15 +31,11 @@ export default function AIKnowledge() {
 
   const [docSearch, setDocSearch] = useState("");
 
-  // Handle AI Chat Submit
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!query.trim()) return;
 
-    // User Message
     const userMsg = { sender: "user", text: query };
-    
-    // Simulated AI Response
     const aiMsg = {
       sender: "ai",
       text: `Based on your departmental documents, here is what I found regarding "${query}": The guidelines recommend submitting all relevant review materials 5 business days prior to the deadline.`,
@@ -51,7 +45,6 @@ export default function AIKnowledge() {
     setQuery("");
   };
 
-  // Filtered documents list
   const filteredDocs = documents.filter(
     (doc) =>
       doc.name.toLowerCase().includes(docSearch.toLowerCase()) ||
@@ -60,7 +53,6 @@ export default function AIKnowledge() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
@@ -72,7 +64,6 @@ export default function AIKnowledge() {
           </p>
         </div>
 
-        {/* Tab Buttons */}
         <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl flex text-xs font-semibold self-start sm:self-auto">
           <button
             onClick={() => setActiveTab("chat")}
@@ -97,11 +88,9 @@ export default function AIKnowledge() {
         </div>
       </div>
 
-      {/* TAB 1: AI ASSISTANT CHAT */}
+      {/* TAB 1: AI CHAT */}
       {activeTab === "chat" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col h-[600px] overflow-hidden">
-          
-          {/* Chat Messages Body */}
           <div className="flex-1 p-6 overflow-y-auto space-y-4">
             {chatHistory.map((msg, index) => (
               <div
@@ -133,7 +122,6 @@ export default function AIKnowledge() {
             ))}
           </div>
 
-          {/* Chat Input Bar */}
           <form
             onSubmit={handleSendMessage}
             className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex gap-2"
@@ -142,7 +130,7 @@ export default function AIKnowledge() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask AI e.g. 'What is the leave policy deadline for assistant professors?'..."
+              placeholder="Ask AI e.g. 'What is the leave policy deadline?'..."
               className="flex-1 px-4 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
             <button
@@ -152,15 +140,12 @@ export default function AIKnowledge() {
               <Send className="w-3.5 h-3.5" /> Send
             </button>
           </form>
-
         </div>
       )}
 
-      {/* TAB 2: INTEGRATED DOCUMENT REPOSITORY */}
+      {/* TAB 2: DOCUMENT REPOSITORY */}
       {activeTab === "documents" && (
         <div className="space-y-6">
-          
-          {/* Controls: Search & Upload */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -178,7 +163,6 @@ export default function AIKnowledge() {
             </button>
           </div>
 
-          {/* Document Table */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -209,11 +193,9 @@ export default function AIKnowledge() {
                       <td className="p-4 text-slate-600 dark:text-slate-400">{doc.uploadedBy}</td>
                       <td className="p-4 text-slate-400">{doc.date}</td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-500 transition-colors">
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <button className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-500 transition-colors">
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -221,10 +203,8 @@ export default function AIKnowledge() {
               </table>
             </div>
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
