@@ -18,12 +18,41 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import type { Announcement, AppPage, DocItem, FacultyMember, Meeting, NotifItem, Role, TaskItem } from "@/types";
+import type { HODDashboardData } from "@/services/dashboard.service";
 import { C, CHART_COLORS } from "@/constants";
 import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_DATA, NOTIFICATIONS_DATA, workloadData, taskTrendData, uploadTrendData, meetingData, deptDistData } from "@/data";
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
+export function HODDashboard({
+  onPage,
+  currentFaculty,
+  dashboardData,
+  dashboardLoading = false,
+  dashboardError,
+  onRefreshDashboard,
+}: {
+  onPage:(p:AppPage)=>void;
+  currentFaculty:FacultyMember;
+  dashboardData?: HODDashboardData | null;
+  dashboardLoading?: boolean;
+  dashboardError?: string | null;
+  onRefreshDashboard?: () => void | Promise<void>;
+}) {
+  const stats = dashboardData?.stats;
+  const workload = dashboardData?.workloadData ?? [];
+  const taskTrend = dashboardData?.taskTrendData ?? [];
+  const uploadTrend = dashboardData?.uploadTrendData ?? [];
+  const departmentDistribution = dashboardData?.deptDistData ?? [];
+  const recentAnnouncements = dashboardData?.recentAnnouncements ?? [];
+  const upcomingMeetings = dashboardData?.upcomingMeetings ?? [];
+  const insights = dashboardData?.insights ?? [];
+  const todayLabel = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
   return (
 
@@ -35,13 +64,13 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.department} Department</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>{todayLabel} · {currentFaculty.department} Department</p>
 
         </div>
 
         <div className="flex gap-3">
 
-          <Btn variant="outline" size="sm" icon={RefreshCw}>Refresh</Btn>
+          <Btn variant="outline" size="sm" icon={RefreshCw} onClick={()=>void onRefreshDashboard?.()}>{dashboardLoading ? "Refreshing" : "Refresh"}</Btn>
 
           <Btn variant="primary" size="sm" icon={Plus}>Quick Action</Btn>
 
@@ -53,19 +82,19 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
 
-        <StatCard label="Total Faculty"     value={47}  sub="Across 8 depts"   icon={Users}       iconBg={C.blue50}  iconColor={C.blue200}  />
+        <StatCard label="Total Faculty"     value={stats?.totalFaculty ?? 0}  sub={`Across ${stats?.departments ?? 0} depts`}   icon={Users}       iconBg={C.blue50}  iconColor={C.blue200}  />
 
-        <StatCard label="Departments"       value={8}   sub="Active this sem"  icon={Building2}   iconBg={C.blue50}  iconColor={C.blue200}  />
+        <StatCard label="Departments"       value={stats?.departments ?? 0}   sub="Active this sem"  icon={Building2}   iconBg={C.blue50}  iconColor={C.blue200}  />
 
-        <StatCard label="Active Tasks"      value={23}  sub="5 high priority"  icon={CheckSquare} iconBg={C.olive50} iconColor={C.olive300} />
+        <StatCard label="Active Tasks"      value={stats?.activeTasks ?? 0}  sub={`${stats?.highPriorityTasks ?? 0} high priority`}  icon={CheckSquare} iconBg={C.olive50} iconColor={C.olive300} />
 
-        <StatCard label="Pending Approvals" value={5}   sub="Needs review"     icon={UserCheck}   iconBg={C.red50}   iconColor={C.red300}   />
+        <StatCard label="Pending Approvals" value={stats?.pendingApprovals ?? 0}   sub="Needs review"     icon={UserCheck}   iconBg={C.red50}   iconColor={C.red300}   />
 
-        <StatCard label="Meetings Today"    value={3}   sub="Next: 10:00 AM"   icon={Video}       iconBg={C.sky50}   iconColor={C.sky300}   />
+        <StatCard label="Meetings Today"    value={stats?.meetingsToday ?? 0}   sub={`Next: ${stats?.nextMeetingTime ?? "None"}`}   icon={Video}       iconBg={C.sky50}   iconColor={C.sky300}   />
 
-        <StatCard label="Documents"         value={142} sub="12 new this week" icon={FileText}    iconBg={C.blue50}  iconColor={C.blue200}  />
+        <StatCard label="Documents"         value={stats?.documents ?? 0} sub={`${stats?.documentsThisWeek ?? 0} new this week`} icon={FileText}    iconBg={C.blue50}  iconColor={C.blue200}  />
 
-        <StatCard label="Announcements"     value={12}  sub="3 pinned"         icon={Megaphone}   iconBg={C.sky50}   iconColor={C.sky300}   />
+        <StatCard label="Announcements"     value={stats?.announcements ?? 0}  sub={`${stats?.pinnedAnnouncements ?? 0} pinned`}         icon={Megaphone}   iconBg={C.sky50}   iconColor={C.sky300}   />
 
       </div>
 
@@ -77,7 +106,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <ResponsiveContainer width="100%" height={140}>
 
-            <RBar data={workloadData} barSize={20}>
+            <RBar data={workload} barSize={20}>
 
               <CartesianGrid strokeDasharray="3 3" stroke={C.bg} vertical={false} />
 
@@ -99,7 +128,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <ResponsiveContainer width="100%" height={140}>
 
-            <RLine data={taskTrendData}>
+            <RLine data={taskTrend}>
 
               <CartesianGrid strokeDasharray="3 3" stroke={C.bg} vertical={false} />
 
@@ -123,7 +152,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <ResponsiveContainer width="100%" height={140}>
 
-            <RArea data={uploadTrendData}>
+            <RArea data={uploadTrend}>
 
               <CartesianGrid strokeDasharray="3 3" stroke={C.bg} vertical={false} />
 
@@ -147,9 +176,9 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
             <RPie>
 
-              <Pie data={deptDistData} cx="50%" cy="50%" innerRadius={35} outerRadius={58} dataKey="value" paddingAngle={3}>
+              <Pie data={departmentDistribution} cx="50%" cy="50%" innerRadius={35} outerRadius={58} dataKey="value" paddingAngle={3}>
 
-                {deptDistData.map((_,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]} />)}
+                {departmentDistribution.map((_,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]} />)}
 
               </Pie>
 
@@ -177,7 +206,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <div className="space-y-3">
 
-            {ANNOUNCEMENTS_DATA.slice(0,3).map(a=>(
+            {recentAnnouncements.map(a=>(
 
               <div key={a.id} className="flex gap-3 pb-3 border-b last:border-0 last:pb-0" style={{borderColor:C.bg}}>
 
@@ -197,13 +226,17 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
                   </div>
 
-                  <p className="text-[10px]" style={{color:C.textMuted}}>{a.category} Â· {a.date}</p>
+                  <p className="text-[10px]" style={{color:C.textMuted}}>{a.category} · {a.date}</p>
 
                 </div>
 
               </div>
 
             ))}
+
+            {!dashboardLoading && recentAnnouncements.length===0 && (
+              <EmptyState icon={Megaphone} title="No announcements yet" description="Announcements from Supabase will appear here." />
+            )}
 
           </div>
 
@@ -221,7 +254,7 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
           <div className="space-y-3">
 
-            {MEETINGS_DATA.filter(m=>m.status==="Upcoming").map(m=>(
+            {upcomingMeetings.map(m=>(
 
               <div key={m.id} className="flex gap-3 pb-3 border-b last:border-0 last:pb-0" style={{borderColor:C.bg}}>
 
@@ -237,13 +270,17 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
                   <p className="text-xs font-bold mb-0.5 line-clamp-1" style={{color:C.textPrimary}}>{m.title}</p>
 
-                  <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} Â· {m.location}</p>
+                  <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} · {m.location}</p>
 
                 </div>
 
               </div>
 
             ))}
+
+            {!dashboardLoading && upcomingMeetings.length===0 && (
+              <EmptyState icon={Video} title="No upcoming meetings" description="Meetings from Supabase will appear here." />
+            )}
 
           </div>
 
@@ -273,7 +310,17 @@ export function HODDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>v
 
             </div>
 
-            <p className="text-xs leading-relaxed mt-1.5" style={{color:C.blue100}}>Insights will appear after department activity data is available.</p>
+            <div className="space-y-1.5">
+              {dashboardError ? (
+                <p className="text-xs leading-relaxed" style={{color:C.blue100}}>Some dashboard data could not be loaded. Try refreshing after checking Supabase table access.</p>
+              ) : insights.length ? (
+                insights.slice(0,4).map((insight, index) => (
+                  <p key={index} className="text-xs leading-relaxed" style={{color:C.blue100}}>· {insight}</p>
+                ))
+              ) : (
+                <p className="text-xs leading-relaxed" style={{color:C.blue100}}>Insights will appear after department activity data is available.</p>
+              )}
+            </div>
 
           </div>
 

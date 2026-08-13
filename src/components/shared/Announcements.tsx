@@ -23,7 +23,15 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function AnnouncementsPage({ role }: { role:Role }) {
+export function AnnouncementsPage({
+  role,
+  announcements = [],
+  loading = false,
+}: {
+  role:Role;
+  announcements?: Announcement[];
+  loading?: boolean;
+}) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [view, setView] = useState<"grid"|"list">("grid");
@@ -54,7 +62,7 @@ export function AnnouncementsPage({ role }: { role:Role }) {
       </FilterBar>
 
       <div className={cn(view==="grid"?"grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4":"space-y-3")}>
-        {ANNOUNCEMENTS_DATA.map(a=>(
+        {announcements.map(a=>(
           <Card key={a.id} className="p-5" onClick={()=>setSelected(a)}>
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
@@ -82,7 +90,13 @@ export function AnnouncementsPage({ role }: { role:Role }) {
               {a.hasAttachment && <Paperclip size={13} style={{color:C.textMuted}} />}
             </div>
           </Card>
-        ))}
+        ))}
+
+        {!loading && announcements.length===0 && (
+          <div className={cn(view==="grid" ? "col-span-full" : "")}>
+            <EmptyState icon={Megaphone} title="No announcements found" description="Announcements from Supabase will appear here once records are available to this user." />
+          </div>
+        )}
       </div>
 
       {selected && (

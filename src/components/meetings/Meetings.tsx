@@ -23,7 +23,17 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function MeetingsPage({ role }: { role:Role }) {
+export function MeetingsPage({
+  role,
+  meetings = [],
+  facultyMembers = [],
+  loading = false,
+}: {
+  role:Role;
+  meetings?: Meeting[];
+  facultyMembers?: FacultyMember[];
+  loading?: boolean;
+}) {
   const [tab, setTab] = useState("Upcoming");
   const [selected, setSelected] = useState<Meeting|null>(null);
   const [detailTab, setDetailTab] = useState("Agenda");
@@ -49,7 +59,7 @@ export function MeetingsPage({ role }: { role:Role }) {
       </FilterBar>
       <Tabs tabs={["Upcoming","Completed","Cancelled"]} active={tab} onChange={setTab} />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {MEETINGS_DATA.filter(m=>m.status===tab).map(m=>(
+        {meetings.filter(m=>m.status===tab).map(m=>(
           <Card key={m.id} className="p-5" onClick={()=>{ setSelected(m); setDetailTab("Agenda"); }}>
             <div className="flex items-start justify-between gap-2 mb-3">
               <StatusBadge status={m.status} />
@@ -67,7 +77,7 @@ export function MeetingsPage({ role }: { role:Role }) {
             </div>
           </Card>
         ))}
-        {MEETINGS_DATA.filter(m=>m.status===tab).length===0 && (
+        {!loading && meetings.filter(m=>m.status===tab).length===0 && (
           <div className="col-span-3">
             <EmptyState icon={Video} title={`No ${tab} meetings`} description={`There are no ${tab.toLowerCase()} meetings.`}
               action={canCreate?<Btn variant="primary" icon={Plus}>Schedule Meeting</Btn>:undefined} />
@@ -102,7 +112,7 @@ export function MeetingsPage({ role }: { role:Role }) {
           )}
           {detailTab==="Attendance" && (
             <div className="space-y-2">
-              {FACULTY_DATA.slice(0,5).map(f=>(
+              {facultyMembers.slice(0,5).map(f=>(
                 <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl border" style={{borderColor:C.border}}>
                   <Avatar name={f.name} size="sm" />
                   <div className="flex-1"><p className="text-xs font-bold" style={{color:C.textPrimary}}>{f.name}</p><p className="text-[10px]" style={{color:C.textMuted}}>{f.designation}</p></div>
@@ -110,7 +120,11 @@ export function MeetingsPage({ role }: { role:Role }) {
                     <CheckCircle size={13} style={{color:C.olive300}} />Present
                   </div>
                 </div>
-              ))}
+              ))}
+
+              {facultyMembers.length===0 && (
+                <EmptyState icon={Users} title="No attendance records" description="Faculty records from Supabase will appear here." />
+              )}
             </div>
           )}
           {["Minutes","Decisions","Action Items","Attachments"].includes(detailTab) && (

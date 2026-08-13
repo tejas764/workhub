@@ -1,16 +1,8 @@
 import { createClient } from "@/lib/supabase-client";
+import { getBackendTable } from "@/services/backend-data.service";
 
 export async function getTasks() {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .order("due_date");
-
-  if (error) throw error;
-
-  return data;
+  return getBackendTable("tasks");
 }
 
 export async function updateTask(

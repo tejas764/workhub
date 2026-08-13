@@ -3,15 +3,21 @@ import {
   getAnnouncements,
   createAnnouncement,
 } from "@/services/announcement.service";
+import { announcementFromRow } from "@/lib/supabase-records";
+import type { Announcement } from "@/types";
 
-export function useAnnouncements() {
-const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useAnnouncements(enabled = true) {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(enabled);
 
   async function loadAnnouncements() {
+    if (!enabled) return;
+    setLoading(true);
     try {
       const data = await getAnnouncements();
-      setAnnouncements(data || []);
+      setAnnouncements((data ?? []).map((row, index) => announcementFromRow(row, index)));
+    } catch (error) {
+      console.error("Error loading announcements:", error);
     } finally {
       setLoading(false);
     }
@@ -23,8 +29,8 @@ const [announcements, setAnnouncements] = useState<any[]>([]);
   }
 
   useEffect(() => {
-    loadAnnouncements();
-  }, []);
+    void loadAnnouncements();
+  }, [enabled]);
 
   return {
     announcements,

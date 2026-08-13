@@ -23,7 +23,17 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function TasksPage({ role }: { role:Role }) {
+export function TasksPage({
+  role,
+  tasks = [],
+  facultyMembers = [],
+  loading = false,
+}: {
+  role:Role;
+  tasks?: TaskItem[];
+  facultyMembers?: FacultyMember[];
+  loading?: boolean;
+}) {
 
   const [tab, setTab] = useState("My Tasks");
 
@@ -61,13 +71,13 @@ export function TasksPage({ role }: { role:Role }) {
 
         {[
 
-          {label:"Total",      val:TASKS_DATA.length,                                     bg:C.bg,      color:C.textPrimary},
+          {label:"Total",      val:tasks.length,                                     bg:C.bg,      color:C.textPrimary},
 
-          {label:"In Progress",val:TASKS_DATA.filter(t=>t.status==="In Progress").length, bg:C.blue50,  color:C.blue500},
+          {label:"In Progress",val:tasks.filter(t=>t.status==="In Progress").length, bg:C.blue50,  color:C.blue500},
 
-          {label:"Pending",    val:TASKS_DATA.filter(t=>t.status==="Pending").length,     bg:C.gray50,  color:C.gray400},
+          {label:"Pending",    val:tasks.filter(t=>t.status==="Pending").length,     bg:C.gray50,  color:C.gray400},
 
-          {label:"Overdue",    val:TASKS_DATA.filter(t=>t.status==="Overdue").length,     bg:C.red50,   color:C.red300},
+          {label:"Overdue",    val:tasks.filter(t=>t.status==="Overdue").length,     bg:C.red50,   color:C.red300},
 
         ].map(({label,val,bg,color})=>(
 
@@ -95,7 +105,7 @@ export function TasksPage({ role }: { role:Role }) {
 
         <Input placeholder="Due date..." icon={Calendar} className="w-36" />
 
-        {role!=="faculty"&&<Select options={["All Assignees",...FACULTY_DATA.map(f=>f.name)]} />}
+        {role!=="faculty"&&<Select options={["All Assignees",...facultyMembers.map(f=>f.name)]} />}
 
       </FilterBar>
 
@@ -107,7 +117,7 @@ export function TasksPage({ role }: { role:Role }) {
 
       <div className="space-y-2">
 
-        {TASKS_DATA.map(t=>(
+        {tasks.map(t=>(
 
           <Card key={t.id} className="p-4" onClick={()=>setSelected(t)}>
 
@@ -172,6 +182,10 @@ export function TasksPage({ role }: { role:Role }) {
           </Card>
 
         ))}
+
+        {!loading && tasks.length===0 && (
+          <EmptyState icon={CheckSquare} title="No tasks found" description="Tasks from Supabase will appear here once records are available to this user." />
+        )}
 
       </div>
 

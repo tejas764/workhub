@@ -1,4 +1,4 @@
-import { readPdf, supabase } from "./ingest";
+import { createServiceSupabaseClient, readPdf } from "./ingest";
 import { chunkText } from "./chunker";
 import { generateEmbedding } from "./embedding";
 
@@ -7,6 +7,7 @@ export async function ingestDocument(
   title: string,
   departmentId: string
 ) {
+  const supabase = createServiceSupabaseClient();
   const documentId = crypto.randomUUID();
 
   const text = await readPdf(filePath);

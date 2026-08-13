@@ -1,16 +1,8 @@
 import { createClient } from "@/lib/supabase-client";
+import { getBackendTable } from "@/services/backend-data.service";
 
 export async function getAnnouncements() {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("announcements")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return data;
+  return getBackendTable("announcements");
 }
 
 export async function createAnnouncement(

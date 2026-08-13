@@ -3,15 +3,19 @@ import {
   getDocuments,
   uploadDocument,
 } from "@/services/document.service";
+import { documentFromRow } from "@/lib/supabase-records";
+import type { DocItem } from "@/types";
 
-export function useDocuments() {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useDocuments(enabled = true) {
+  const [documents, setDocuments] = useState<DocItem[]>([]);
+  const [loading, setLoading] = useState(enabled);
 
   async function loadDocuments() {
+    if (!enabled) return;
+    setLoading(true);
     try {
       const data = await getDocuments();
-      setDocuments(data ?? []);
+      setDocuments((data ?? []).map((row, index) => documentFromRow(row, index)));
     } catch (error) {
       console.error("Error loading documents:", error);
     } finally {
@@ -28,8 +32,8 @@ export function useDocuments() {
   }
 
   useEffect(() => {
-    loadDocuments();
-  }, []);
+    void loadDocuments();
+  }, [enabled]);
 
   return {
     documents,

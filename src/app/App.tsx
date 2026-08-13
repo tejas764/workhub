@@ -26,6 +26,12 @@ import { HelpPage } from "@/components/help/Help";
 import { ErrorPage } from "@/components/shared/ErrorPage";
 import { C } from "@/constants";
 import { cn } from "@/lib/ui-utils";
+import { useHODDashboard } from "@/hooks/useHODDashboard";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { useDocuments } from "@/hooks/useDocuments";
+import { useMeetings } from "@/hooks/useMeetings";
+import { useTasks } from "@/hooks/useTasks";
+import { getBackendTable } from "@/services/backend-data.service";
 
 export default function App({ initialPage }: { initialPage?: AppPage }) {
   const router = useRouter();
@@ -44,6 +50,11 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hodDashboard = useHODDashboard(view === "app" && role === "hod");
+  const taskState = useTasks(view === "app");
+  const meetingState = useMeetings(view === "app");
+  const documentState = useDocuments(view === "app");
+  const announcementState = useAnnouncements(view === "app");
 
 
 
@@ -182,33 +193,30 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     const loadFaculty = async () => {
       setFacultyLoading(true);
 
-      const { data, error } = await supabase
-        .from("faculty")
-        .select("*");
-
       if (cancelled) return;
 
-      if (error) {
-        console.error("Faculty fetch error:", error.message);
+      try {
+        const data = await getBackendTable("faculty");
+        if (cancelled) return;
+
+        const rows = Array.isArray(data) ? data : [];
+        const mapped = rows.map((row, index) => facultyMemberFromRow(row, index));
+        const fallback = fallbackFacultyFromUser(user);
+        const current = mapped.find(f => f.email.toLowerCase() === (user.email ?? "").toLowerCase())
+          ?? mapped.find(f => String(f.id) === user.id)
+          ?? fallback;
+        const nextRole = roleFromFaculty(current);
+
+        setCurrentFaculty(current);
+        setFacultyMembers(mapped.length ? mapped : [fallback]);
+        setRole(nextRole);
+        if (typeof window !== "undefined") window.localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
+      } catch (error) {
+        console.error("Faculty fetch error:", error);
         const fallback = fallbackFacultyFromUser(user);
         setCurrentFaculty(fallback);
         setFacultyMembers([fallback]);
-        setFacultyLoading(false);
-        return;
       }
-
-      const rows = Array.isArray(data) ? data : [];
-      const mapped = rows.map((row, index) => facultyMemberFromRow(row, index));
-      const fallback = fallbackFacultyFromUser(user);
-      const current = mapped.find(f => f.email.toLowerCase() === (user.email ?? "").toLowerCase())
-        ?? mapped.find(f => String(f.id) === user.id)
-        ?? fallback;
-      const nextRole = roleFromFaculty(current);
-
-      setCurrentFaculty(current);
-      setFacultyMembers(mapped.length ? mapped : [fallback]);
-      setRole(nextRole);
-      if (typeof window !== "undefined") window.localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
       setFacultyLoading(false);
     };
 
@@ -218,6 +226,11 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
       cancelled = true;
     };
   }, [supabase, user]);
+
+  useEffect(() => {
+    if (role !== "hod" || !hodDashboard.data?.faculty.length) return;
+    setFacultyMembers(hodDashboard.data.faculty);
+  }, [hodDashboard.data, role]);
 
 
   if(view==="auth") {
@@ -236,15 +249,15 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
     switch(page) {
 
-      case "dashboard":     return <Dashboard onPage={navigateTo} currentFaculty={currentFaculty} />;
+      case "dashboard":     return <Dashboard onPage={navigateTo} currentFaculty={currentFaculty} dashboardData={hodDashboard.data} dashboardLoading={hodDashboard.loading} dashboardError={hodDashboard.error} onRefreshDashboard={hodDashboard.refresh} />;
       case "faculty":       return <FacultyPage role={role} facultyMembers={facultyMembers} loading={facultyLoading} />;
-      case "announcements": return <AnnouncementsPage role={role} />;
+      case "announcements": return <AnnouncementsPage role={role} announcements={announcementState.announcements} loading={announcementState.loading} />;
 
-      case "meetings":      return <MeetingsPage role={role} />;
+      case "meetings":      return <MeetingsPage role={role} meetings={meetingState.meetings} facultyMembers={facultyMembers} loading={meetingState.loading} />;
 
-      case "documents":     return <DocumentsPage />;
+      case "documents":     return <DocumentsPage documents={documentState.documents} loading={documentState.loading} />;
 
-      case "tasks":         return <TasksPage role={role} />;
+      case "tasks":         return <TasksPage role={role} tasks={taskState.tasks} facultyMembers={facultyMembers} loading={taskState.loading} />;
 
       case "ai-knowledge":  return <AIKnowledgePage />;
 

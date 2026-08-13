@@ -3,15 +3,19 @@ import {
   getTasks,
   updateTask,
 } from "@/services/task.service";
+import { taskItemFromRow } from "@/lib/supabase-records";
+import type { TaskItem } from "@/types";
 
-export function useTasks() {
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useTasks(enabled = true) {
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(enabled);
 
   async function loadTasks() {
+    if (!enabled) return;
+    setLoading(true);
     try {
       const data = await getTasks();
-      setTasks(data ?? []);
+      setTasks((data ?? []).map((row, index) => taskItemFromRow(row, index)));
     } catch (error) {
       console.error("Error loading tasks:", error);
     } finally {
@@ -28,8 +32,8 @@ export function useTasks() {
   }
 
   useEffect(() => {
-    loadTasks();
-  }, []);
+    void loadTasks();
+  }, [enabled]);
 
   return {
     tasks,

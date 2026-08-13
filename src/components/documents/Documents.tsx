@@ -23,7 +23,7 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function DocumentsPage() {
+export function DocumentsPage({ documents = [], loading = false }: { documents?: DocItem[]; loading?: boolean }) {
   const [view, setView] = useState<"grid"|"list">("grid");
   const [selected, setSelected] = useState<DocItem|null>(null);
   const [aiMsg, setAiMsg] = useState("");
@@ -58,7 +58,7 @@ export function DocumentsPage() {
 
       {!selected ? (
         <div className={cn(view==="grid"?"grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4":"space-y-3")}>
-          {DOCUMENTS_DATA.map(d=>(
+          {documents.map(d=>(
             <Card key={d.id} className="p-4" onClick={()=>setSelected(d)}>
               {view==="grid" ? (
                 <div>
@@ -96,7 +96,13 @@ export function DocumentsPage() {
                 </div>
               )}
             </Card>
-          ))}
+          ))}
+
+          {!loading && documents.length===0 && (
+            <div className={cn(view==="grid" ? "col-span-full" : "")}>
+              <EmptyState icon={FileText} title="No documents found" description="Documents from Supabase will appear here once records are available to this user." />
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 h-[calc(100vh-260px)]">

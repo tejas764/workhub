@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { readPdf } from "@/lib/ingest";
-import { chunkText } from "@/lib/chunker";
-import { generateEmbedding } from "@/lib/embedding";
 import { ingestDocument } from "@/lib/ingestion";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

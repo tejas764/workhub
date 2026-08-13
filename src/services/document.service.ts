@@ -1,16 +1,8 @@
 import { createClient } from "@/lib/supabase-client";
+import { getBackendTable } from "@/services/backend-data.service";
 
 export async function getDocuments() {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("documents")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return data;
+  return getBackendTable("documents");
 }
 
 export async function uploadDocument(
