@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
   }
 
   const { client, usingServiceRole } = await createBackendClient();
-  let query = client.from(table).select("*");
+  let query = table === "documents"
+    ? client.from(table).select("*, departments(id, name, code)")
+    : client.from(table).select("*");
   const order = ORDER_BY[table];
 
   if (order) {

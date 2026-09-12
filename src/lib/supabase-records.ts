@@ -33,6 +33,12 @@ const firstBoolean = (row: AnyRow, keys: string[]) => {
   return false;
 };
 
+const relatedText = (row: AnyRow, relation: string, keys: string[]) => {
+  const value = row[relation];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  return firstText(value as AnyRow, keys);
+};
+
 const formatDate = (value: string) => {
   if (!value) return "Not dated";
   const date = new Date(value);
@@ -96,7 +102,7 @@ export const meetingFromRow = (row: AnyRow, index = 0): Meeting => {
     time: firstText(row, ["time", "meeting_time", "start_time"]) || "TBA",
     participants,
     status: normalizeMeetingStatus(firstText(row, ["status", "meeting_status"])),
-    department: firstText(row, ["department", "department_name", "department_id", "dept"]) || "Department",
+    department: relatedText(row, "departments", ["name", "code"]) || firstText(row, ["department", "department_name", "department_id", "dept"]) || "Department",
     location: firstText(row, ["location", "venue", "room", "meeting_link"]) || "TBA",
   };
 };
@@ -104,6 +110,7 @@ export const meetingFromRow = (row: AnyRow, index = 0): Meeting => {
 export const documentFromRow = (row: AnyRow, index = 0): DocItem => {
   const storagePath = firstText(row, ["storage_path", "file_path", "path", "url"]);
   const typeSource = firstText(row, ["type", "document_type", "mime_type"]) || storagePath;
+  const summary = firstText(row, ["ai_summary", "summary"]);
 
   return {
     id: firstText(row, ["id", "document_id"]) || index + 1,
@@ -111,9 +118,12 @@ export const documentFromRow = (row: AnyRow, index = 0): DocItem => {
     category: firstText(row, ["category", "document_type", "type"]) || "General",
     uploadedBy: firstText(row, ["uploaded_by", "uploader", "author", "created_by"]) || "Department",
     date: formatDate(firstText(row, ["created_at", "uploaded_at", "date"])),
+    department: firstText(row, ["department", "department_name", "department_id", "dept"]) || "Department",
     type: normalizeDocType(typeSource),
     size: firstText(row, ["size", "file_size", "display_size"]) || "Unknown size",
-    hasSummary: Boolean(firstText(row, ["ai_summary", "summary"])) || firstBoolean(row, ["has_summary"]),
+    hasSummary: Boolean(summary) || firstBoolean(row, ["has_summary"]),
+    summary: summary || undefined,
+    storagePath: storagePath || undefined,
   };
 };
 

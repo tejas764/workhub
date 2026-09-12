@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase-client";
 import { getBackendTable } from "@/services/backend-data.service";
 
 export async function getDocuments() {
@@ -13,30 +12,21 @@ export async function uploadDocument(
     department_id: string;
   }
 ) {
-  const supabase = createClient();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("title", metadata.title);
+  formData.append("document_type", metadata.document_type);
+  formData.append("department_id", metadata.department_id);
 
-  const filePath =
-    `${metadata.department_id}/documents/${Date.now()}-${file.name}`;
+  const response = await fetch("/api/documents/upload", {
+    method: "POST",
+    body: formData,
+  });
+  const payload = await response.json();
 
-  const { error: uploadError } = await supabase.storage
-    .from("documents")
-    .upload(filePath, file);
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error ?? "Document upload failed.");
+  }
 
-  if (uploadError) throw uploadError;
-
-  const { data, error } = await supabase
-    .from("documents")
-    .insert([
-      {
-        title: metadata.title,
-        document_type: metadata.document_type,
-        storage_path: filePath,
-        department_id: metadata.department_id,
-      },
-    ])
-    .select();
-
-  if (error) throw error;
-
-  return data;
+  return payload.data;
 }

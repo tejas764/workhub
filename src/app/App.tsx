@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { AppPage, AuthView, FacultyMember, Role, ViewMode } from "@/types";
@@ -33,8 +32,28 @@ import { useMeetings } from "@/hooks/useMeetings";
 import { useTasks } from "@/hooks/useTasks";
 import { getBackendTable } from "@/services/backend-data.service";
 
+const PAGE_PATHS: Partial<Record<AppPage, string>> = {
+  dashboard: "/",
+  faculty: "/faculty",
+  announcements: "/announcements",
+  meetings: "/meetings",
+  documents: "/documents",
+  tasks: "/tasks",
+  "ai-knowledge": "/ai-knowledge",
+  reports: "/reports",
+  department: "/department",
+  notifications: "/notifications",
+  profile: "/profile",
+  settings: "/settings",
+  help: "/help",
+};
+
+const PAGE_BY_PATH = Object.entries(PAGE_PATHS).reduce<Record<string, AppPage>>((acc, [page, path]) => {
+  if (path) acc[path] = page as AppPage;
+  return acc;
+}, {});
+
 export default function App({ initialPage }: { initialPage?: AppPage }) {
-  const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [currentFaculty, setCurrentFaculty] = useState<FacultyMember>(() => fallbackFacultyFromUser(null));
@@ -59,13 +78,12 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
 
   const navigateTo = (p: AppPage) => {
-
     setPage(p);
+    const path = PAGE_PATHS[p];
 
-    const path = p === "dashboard" ? "/" : `/${p}`;
-
-    try { router.push(path); } catch (e) { /* noop during build-time */ }
-
+    if (typeof window !== "undefined" && path && window.location.pathname !== path) {
+      window.history.pushState({ page: p }, "", path);
+    }
   };
 
 
@@ -153,6 +171,17 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
 
   useEffect(()=>{ if(initialPage) setPage(initialPage); }, [initialPage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      setPage(PAGE_BY_PATH[window.location.pathname] ?? "dashboard");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
 
 
@@ -255,7 +284,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
       case "meetings":      return <MeetingsPage role={role} meetings={meetingState.meetings} facultyMembers={facultyMembers} loading={meetingState.loading} />;
 
-      case "documents":     return <DocumentsPage documents={documentState.documents} loading={documentState.loading} />;
+      case "documents":     return <DocumentsPage documents={documentState.documents} loading={documentState.loading} departmentId={currentFaculty.departmentId} departmentName={currentFaculty.department} onUploadDocument={documentState.addDocument} />;
 
       case "tasks":         return <TasksPage role={role} tasks={taskState.tasks} facultyMembers={facultyMembers} loading={taskState.loading} />;
 

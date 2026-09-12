@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
   BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
@@ -23,11 +23,53 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
-export function DocumentsPage({ documents = [], loading = false }: { documents?: DocItem[]; loading?: boolean }) {
+const documentTypeFromFile = (file: File) => {
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) return "PDF";
+  if (file.type.includes("word") || name.endsWith(".doc") || name.endsWith(".docx")) return "Word";
+  if (file.type.includes("excel") || file.type.includes("spreadsheet") || name.endsWith(".xls") || name.endsWith(".xlsx")) return "Excel";
+  if (file.type.includes("presentation") || name.endsWith(".ppt") || name.endsWith(".pptx")) return "PowerPoint";
+  if (file.type.startsWith("image/")) return "Image";
+  return "Document";
+};
+
+export function DocumentsPage({ documents = [], loading = false, departmentId, departmentName, onUploadDocument }: {
+  documents?: DocItem[];
+  loading?: boolean;
+  departmentId?: string;
+  departmentName?: string;
+  onUploadDocument?: (file: File, metadata: { title: string; document_type: string; department_id: string }) => Promise<void>;
+}) {
   const [view, setView] = useState<"grid"|"list">("grid");
   const [selected, setSelected] = useState<DocItem|null>(null);
   const [aiMsg, setAiMsg] = useState("");
-  const [chat, setChat] = useState<{from:"user"|"ai";text:string}[]>([]);
+  const [chat, setChat] = useState<{from:"user"|"ai";text:string}[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadFile = async (file: File) => {
+    if (!onUploadDocument) return;
+    const uploadDepartmentId = departmentId?.trim() || departmentName?.trim() || "cse";
+
+    setUploading(true);
+    setUploadMessage("");
+
+    try {
+      await onUploadDocument(file, {
+        title: file.name,
+        document_type: documentTypeFromFile(file),
+        department_id: uploadDepartmentId,
+      });
+      setUploadMessage("Document uploaded and saved.");
+    } catch (error) {
+      console.error("Document upload error:", error);
+      setUploadMessage(error instanceof Error ? `Upload failed: ${error.message}` : "Upload failed. Could not save document.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="p-6">
@@ -38,10 +80,34 @@ export function DocumentsPage({ documents = [], loading = false }: { documents?:
         </div>
         <div className="flex gap-3">
           <Btn variant="outline" size="sm" icon={FolderOpen}>Browse Folders</Btn>
-          <Btn variant="primary" size="sm" icon={Upload}>Upload Document</Btn>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={e=>{
+              const file = e.target.files?.[0];
+              if (file) void handleUploadFile(file);
+            }}
+          />
+
+          <Btn
+            variant="primary"
+            size="sm"
+            icon={uploading ? RefreshCw : Upload}
+            disabled={uploading}
+            onClick={()=>fileInputRef.current?.click()}
+          >
+            {uploading ? "Uploading..." : "Upload Document"}
+          </Btn>
         </div>
       </div>
-      <FilterBar>
+      {uploadMessage && (
+        <div className="mb-4 rounded-[10px] border px-3 py-2 text-xs font-semibold" style={{borderColor:C.border, background:C.bg, color:C.textSecondary}}>
+          {uploadMessage}
+        </div>
+      )}
+
+      <FilterBar>
         <Input placeholder="Search documents..." icon={Search} className="flex-1 min-w-40" />
         <Select options={["All Categories","Academic","Administrative","Accreditation","Research","Finance","HR","Facilities"]} />
         <Select options={["All Types","PDF","Word","Excel","PowerPoint"]} />
@@ -65,7 +131,9 @@ export function DocumentsPage({ documents = [], loading = false }: { documents?:
                   <div className="flex justify-center mb-4"><FileTypeIcon type={d.type} /></div>
                   {d.hasSummary && <div className="flex items-center justify-center gap-1 mb-2"><Sparkles size={10} style={{color:C.pink200}} /><span className="text-[10px] font-bold" style={{color:C.textMuted}}>AI Summary</span></div>}
                   <p className="text-xs font-bold text-center line-clamp-2 leading-tight mb-2" style={{color:C.textPrimary}}>{d.title}</p>
-                  <div className="flex justify-center mb-2"><CategoryBadge label={d.category} /></div>
+                  <div className="flex justify-center gap-1 mb-2"><CategoryBadge label={d.category} /><CategoryBadge label={d.department} /></div>
+
+                  {d.summary && <p className="text-[10px] text-center line-clamp-2 mb-2" style={{color:C.textSecondary}}>{d.summary}</p>}
                   <p className="text-[10px] text-center" style={{color:C.textMuted}}>{d.size} · {d.date}</p>
                   <div className="flex gap-1 mt-3">
                     {[Eye,Download,Trash2].map((Icon,i)=>(
@@ -80,10 +148,14 @@ export function DocumentsPage({ documents = [], loading = false }: { documents?:
                 <div className="flex items-center gap-3">
                   <FileTypeIcon type={d.type} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate" style={{color:C.textPrimary}}>{d.title}</p>
+                    <p className="text-sm font-bold truncate" style={{color:C.textPrimary}}>{d.title}</p>
+
+                    {d.summary && <p className="text-xs truncate mt-1" style={{color:C.textSecondary}}>{d.summary}</p>}
                     <p className="text-xs" style={{color:C.textMuted}}>{d.category} · {d.uploadedBy} · {d.date}</p>
                   </div>
-                  {d.hasSummary && <Sparkles size={13} style={{color:C.pink200}} />}
+                  <CategoryBadge label={d.department} />
+
+                  {d.hasSummary && <Sparkles size={13} style={{color:C.pink200}} />}
                   <p className="text-xs" style={{color:C.textMuted}}>{d.size}</p>
                   <div className="flex gap-1">
                     {[Eye,Download,Trash2].map((Icon,i)=>(

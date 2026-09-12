@@ -6,6 +6,12 @@ import {
 import { documentFromRow } from "@/lib/supabase-records";
 import type { DocItem } from "@/types";
 
+type UploadDocumentMetadata = {
+  title: string;
+  document_type: string;
+  department_id: string;
+};
+
 export function useDocuments(enabled = true) {
   const [documents, setDocuments] = useState<DocItem[]>([]);
   const [loading, setLoading] = useState(enabled);
@@ -25,7 +31,7 @@ export function useDocuments(enabled = true) {
 
   async function addDocument(
     file: File,
-    metadata: any
+    metadata: UploadDocumentMetadata
   ) {
     await uploadDocument(file, metadata);
     await loadDocuments();
