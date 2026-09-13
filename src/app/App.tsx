@@ -286,7 +286,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
 
       case "documents":     return <DocumentsPage documents={documentState.documents} loading={documentState.loading} departmentId={currentFaculty.departmentId} departmentName={currentFaculty.department} onUploadDocument={documentState.addDocument} />;
 
-      case "tasks":         return <TasksPage role={role} tasks={taskState.tasks} facultyMembers={facultyMembers} loading={taskState.loading} />;
+      case "tasks":         return <TasksPage role={role} tasks={taskState.tasks} facultyMembers={facultyMembers} currentFaculty={currentFaculty} loading={taskState.loading} onCreateTask={taskState.addTask} onUpdateTask={taskState.editTask} />;
 
       case "ai-knowledge":  return <AIKnowledgePage />;
 

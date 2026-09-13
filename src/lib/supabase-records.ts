@@ -83,11 +83,14 @@ const summaryFrom = (value: string) =>
 export const taskItemFromRow = (row: AnyRow, index = 0): TaskItem => ({
   id: firstText(row, ["id", "task_id"]) || index + 1,
   title: firstText(row, ["title", "name", "task_title"]) || "Untitled task",
-  assignee: firstText(row, ["assignee", "assignee_name", "assigned_to_name", "assigned_to", "faculty_name"]) || "Unassigned",
+  assignee: relatedText(row, "assignee", ["name", "full_name", "email"]) || firstText(row, ["assignee", "assignee_name", "assigned_to_name", "faculty_name"]) || "Unassigned",
+  assigneeId: firstText(row, ["assigned_to"]),
   priority: normalizePriority(firstText(row, ["priority", "task_priority"])),
   status: normalizeStatus(firstText(row, ["status", "task_status"])),
   dueDate: formatDate(firstText(row, ["due_date", "deadline", "target_date"])),
-  department: firstText(row, ["department", "department_name", "department_id", "dept"]) || "Department",
+  dueDateValue: firstText(row, ["due_date", "deadline", "target_date"]),
+  department: relatedText(row, "department", ["name", "code"]) || firstText(row, ["department", "department_name", "dept"]) || "Department",
+  departmentId: firstText(row, ["department_id"]),
   description: firstText(row, ["description", "details", "content"]) || "No description added.",
 });
 

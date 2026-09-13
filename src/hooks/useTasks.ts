@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  createTask,
   getTasks,
+  type TaskMutation,
   updateTask,
 } from "@/services/task.service";
 import { taskItemFromRow } from "@/lib/supabase-records";
@@ -25,9 +27,19 @@ export function useTasks(enabled = true) {
 
   async function changeTaskStatus(
     taskId: string,
-    status: string
+    status: TaskMutation["status"]
   ) {
-    await updateTask(taskId, status);
+    await updateTask(taskId, { status });
+    await loadTasks();
+  }
+
+  async function addTask(input: TaskMutation) {
+    await createTask(input);
+    await loadTasks();
+  }
+
+  async function editTask(taskId: string, input: TaskMutation) {
+    await updateTask(taskId, input);
     await loadTasks();
   }
 
@@ -39,6 +51,8 @@ export function useTasks(enabled = true) {
     tasks,
     loading,
     refresh: loadTasks,
+    addTask,
+    editTask,
     changeTaskStatus,
   };
 }
