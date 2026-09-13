@@ -24,7 +24,8 @@ import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 
 export function AIKnowledgePage() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [activeHistory, setActiveHistory] = useState(0);
   const [messages, setMessages] = useState<{from:"user"|"ai";text:string}[]>([
     {from:"ai", text:"Hello! I'm your WorkHub AI Knowledge Assistant. I can answer questions about department documents, announcements, meetings, and more. What would you like to know?"}
@@ -33,13 +34,41 @@ export function AIKnowledgePage() {
   const suggested = ["Summarize this month's announcements","What are the pending task deadlines?","Generate minutes for the June 20 meeting","Who has the highest workload this month?","List all Academic category documents","What decisions were made in the budget meeting?"];
   const histories = [{title:"Faculty Workload Analysis",date:"Jun 29"},{title:"NAAC Document Review",date:"Jun 28"},{title:"Task Deadline Summary",date:"Jun 27"},{title:"Meeting Minutes Request",date:"Jun 25"},{title:"Announcement Summary",date:"Jun 24"}];
 
-  const sendMsg = () => {
-    if(!query.trim()) return;
-    setMessages(p=>[...p,
-      {from:"user",text:query},
-      {from:"ai",text:`Based on the department knowledge base, here's what I found regarding "${query}": The relevant records indicate this relates to ongoing department activities. I've cross-referenced 3 documents, 2 meetings, and 5 tasks. Confidence: 92%.`}
-    ]);
-    setQuery("");
+  const sendMsg = async () => {
+    const nextQuery = query.trim();
+
+    if(!nextQuery || isSending) return;
+
+    const nextMessages = [...messages, {from:"user" as const,text:nextQuery}];
+
+    setMessages([...nextMessages, {from:"ai",text:"Thinking..."}]);
+
+    setQuery("");
+    setIsSending(true);
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({messages: nextMessages}),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "AI request failed.");
+      }
+
+      setMessages([...nextMessages, {from:"ai",text:payload.answer}]);
+    } catch (error) {
+      setMessages([...nextMessages, {
+        from:"ai",
+        text:error instanceof Error ? `AI error: ${error.message}` : "AI error: Unable to get a response."
+      }]);
+    } finally {
+      setIsSending(false);
+    }
+
   };
 
   return (
@@ -91,7 +120,7 @@ export function AIKnowledgePage() {
             <p className="text-xs" style={{color:C.textMuted}}>Powered by {DOCUMENTS_DATA.length} docs · {MEETINGS_DATA.length} meetings · {ANNOUNCEMENTS_DATA.length} announcements</p>
           </div>
           <div className="ml-auto flex gap-2">
-            <Btn variant="ghost" size="sm" icon={RefreshCw}>Clear</Btn>
+            <Btn variant="ghost" size="sm" icon={RefreshCw} onClick={()=>setMessages([{from:"ai", text:"Hello! I'm your WorkHub AI Knowledge Assistant. I can answer questions about department documents, announcements, meetings, and more. What would you like to know?"}])}>Clear</Btn>
             <Btn variant="ghost" size="sm" icon={Download}>Export</Btn>
           </div>
         </div>
@@ -120,7 +149,7 @@ export function AIKnowledgePage() {
                 className="flex-1 text-sm bg-transparent outline-none resize-none max-h-32" rows={1} style={{color:C.textPrimary}} />
               <button className="flex-shrink-0"><Paperclip size={15} style={{color:C.textMuted}} /></button>
             </div>
-            <button onClick={sendMsg} className="w-11 h-11 rounded-2xl flex items-center justify-center hover:opacity-90"
+            <button onClick={sendMsg} disabled={isSending} className="w-11 h-11 rounded-2xl flex items-center justify-center hover:opacity-90 disabled:opacity-60"
               style={{background:`linear-gradient(135deg,${C.blue600},${C.blue200})`}}>
               <Send size={17} className="text-white" />
             </button>
@@ -188,5 +217,6 @@ export function AIKnowledgePage() {
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
+
 
 
