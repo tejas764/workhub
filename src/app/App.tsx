@@ -15,6 +15,7 @@ import { AnnouncementsPage } from "@/components/shared/Announcements";
 import { MeetingsPage } from "@/components/meetings/Meetings";
 import { DocumentsPage } from "@/components/documents/Documents";
 import { TasksPage } from "@/components/tasks/Tasks";
+import { GoogleWorkspacePage } from "@/components/google/GoogleWorkspace";
 import { AIKnowledgePage } from "@/components/shared/AIKnowledge";
 import { ReportsPage } from "@/components/reports/Reports";
 import { DepartmentPage } from "@/components/shared/Department";
@@ -31,6 +32,8 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useTasks } from "@/hooks/useTasks";
 import { getBackendTable } from "@/services/backend-data.service";
+import { authorizeGoogleCalendar } from "@/services/meeting.service";
+import { GOOGLE_WORKSPACE_SCOPE } from "@/lib/google-scopes";
 
 const PAGE_PATHS: Partial<Record<AppPage, string>> = {
   dashboard: "/",
@@ -39,6 +42,7 @@ const PAGE_PATHS: Partial<Record<AppPage, string>> = {
   meetings: "/meetings",
   documents: "/documents",
   tasks: "/tasks",
+  google: "/google",
   "ai-knowledge": "/ai-knowledge",
   reports: "/reports",
   department: "/department",
@@ -93,6 +97,13 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: GOOGLE_WORKSPACE_SCOPE,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account consent",
+          include_granted_scopes: "true",
+          enable_granular_consent: "true",
+        },
       },
     });
 
@@ -100,6 +111,18 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
       console.error("OAuth Error:", error.message);
       alert(`Error signing in: ${error.message}`);
     }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (typeof window === "undefined" || !window.PublicKeyCredential) {
+      return "This browser or device does not support passkeys.";
+    }
+
+    const { data, error } = await supabase.auth.signInWithPasskey();
+
+    if (error) return error.message;
+    if (data.user) openAppForUser(data.user);
+    return null;
   };
 
   const handleLogin = async (email:string, password:string) => {
@@ -266,7 +289,7 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
     if(authPage==="forgot") return <ForgotPasswordPage onBack={()=>setAuthPage("login")} />;
     if(authPage==="reset")  return <ResetPasswordPage  onBack={()=>setAuthPage("login")} />;
     if(authPage==="signup") return <SignupPage onSignup={handleSignup} onGoogleLogin={handleGoogleLogin} onBack={()=>setAuthPage("login")} onRoleChange={handleRoleChange} role={role} />;
-    return <LoginPage onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} onForgot={()=>setAuthPage("forgot")} onSignup={()=>setAuthPage("signup")} onRoleChange={handleRoleChange} role={role} />;
+    return <LoginPage onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} onPasskeyLogin={handlePasskeyLogin} onForgot={()=>setAuthPage("forgot")} onSignup={()=>setAuthPage("signup")} onRoleChange={handleRoleChange} role={role} />;
   }
 
 
@@ -282,11 +305,13 @@ export default function App({ initialPage }: { initialPage?: AppPage }) {
       case "faculty":       return <FacultyPage role={role} facultyMembers={facultyMembers} loading={facultyLoading} />;
       case "announcements": return <AnnouncementsPage role={role} announcements={announcementState.announcements} loading={announcementState.loading} />;
 
-      case "meetings":      return <MeetingsPage role={role} meetings={meetingState.meetings} facultyMembers={facultyMembers} loading={meetingState.loading} />;
+      case "meetings":      return <MeetingsPage role={role} meetings={meetingState.meetings} facultyMembers={facultyMembers} currentFaculty={currentFaculty} loading={meetingState.loading} onCreateMeeting={meetingState.addMeeting} onAuthorizeGoogle={authorizeGoogleCalendar} />;
 
       case "documents":     return <DocumentsPage documents={documentState.documents} loading={documentState.loading} departmentId={currentFaculty.departmentId} departmentName={currentFaculty.department} onUploadDocument={documentState.addDocument} />;
 
       case "tasks":         return <TasksPage role={role} tasks={taskState.tasks} facultyMembers={facultyMembers} currentFaculty={currentFaculty} loading={taskState.loading} onCreateTask={taskState.addTask} onUpdateTask={taskState.editTask} />;
+
+      case "google":        return <GoogleWorkspacePage />;
 
       case "ai-knowledge":  return <AIKnowledgePage />;
 

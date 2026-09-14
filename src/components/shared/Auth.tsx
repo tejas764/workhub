@@ -10,16 +10,17 @@ import {
   GraduationCap, Mail, Phone, MapPin, Key, EyeOff, ArrowRight,
   UserCheck, Sparkles, FileUp, File, RefreshCw, Home, Pencil,
   List, Award, SlidersHorizontal, LayoutGrid, Layers,
-  FolderOpen, Hash,
+  FolderOpen, Hash, Fingerprint,
 } from "lucide-react";
 import type { Role } from "@/types";
 import { C } from "@/constants";
 import { Btn, GoogleIcon, Input } from "@/components/ui";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 
-export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleChange, role }: {
+export function LoginPage({ onLogin, onGoogleLogin, onPasskeyLogin, onForgot, onSignup, onRoleChange, role }: {
   onLogin:(email:string,password:string)=>Promise<string | null>;
   onGoogleLogin:()=>Promise<void>;
+  onPasskeyLogin:()=>Promise<string | null>;
   onForgot:()=>void; onSignup:()=>void; onRoleChange:(r:Role)=>void; role:Role;
 }) {
   const [email, setEmail] = useState("");
@@ -30,6 +31,7 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const submitLogin = async () => {
     setError("");
@@ -42,8 +44,26 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
   const submitGoogleLogin = async () => {
     setError("");
     setGoogleLoading(true);
-    await onGoogleLogin();
-    setGoogleLoading(false);
+    try {
+      await onGoogleLogin();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to open Google sign-in.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const submitPasskeyLogin = async () => {
+    setError("");
+    setPasskeyLoading(true);
+    try {
+      const message = await onPasskeyLogin();
+      if (message) setError(message);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Passkey sign-in failed.");
+    } finally {
+      setPasskeyLoading(false);
+    }
   };
   return (
 
@@ -172,6 +192,13 @@ export function LoginPage({ onLogin, onGoogleLogin, onForgot, onSignup, onRoleCh
             style={{borderColor:C.border,color:C.textPrimary}}>
             <GoogleIcon />
             {googleLoading ? "Opening Google..." : "Continue with Google"}
+          </button>
+
+          <button type="button" onClick={submitPasskeyLogin} disabled={passkeyLoading}
+            className="mt-3 w-full inline-flex items-center justify-center gap-3 rounded-[10px] border px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            style={{borderColor:C.blue100, background:C.blue50, color:C.blue500}}>
+            <Fingerprint size={17} />
+            {passkeyLoading ? "Checking passkey..." : "Sign in with passkey"}
           </button>
 
           <p className="mt-5 text-center text-sm" style={{color:C.textSecondary}}>

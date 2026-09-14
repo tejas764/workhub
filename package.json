@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:google": "next dev -p 5000",
     "build": "next build",
     "start": "next start"
   },

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getMeetings,
   createMeeting,
+  type CreateMeetingInput,
 } from "@/services/meeting.service";
 import { meetingFromRow } from "@/lib/supabase-records";
 import type { Meeting } from "@/types";
@@ -23,8 +24,9 @@ export function useMeetings(enabled = true) {
     }
   }
 
-  async function addMeeting(meeting: any) {
-    await createMeeting(meeting);
+  async function addMeeting(meeting: CreateMeetingInput) {
+    const created = await createMeeting(meeting);
+    setMeetings(current => [meetingFromRow(created, current.length), ...current]);
     await loadMeetings();
   }
 

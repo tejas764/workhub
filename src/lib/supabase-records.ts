@@ -96,6 +96,12 @@ export const taskItemFromRow = (row: AnyRow, index = 0): TaskItem => ({
 
 export const meetingFromRow = (row: AnyRow, index = 0): Meeting => {
   const participants = Array.isArray(row.participants) ? row.participants.length : firstNumber(row, ["participants", "participant_count", "attendee_count"]);
+  const attendeeEmails = Array.isArray(row.attendee_emails)
+    ? row.attendee_emails.map(asText).filter(Boolean)
+    : firstText(row, ["attendee_emails", "attendees"])
+      .split(",")
+      .map(email => email.trim())
+      .filter(Boolean);
 
   return {
     id: firstText(row, ["id", "meeting_id"]) || index + 1,
@@ -107,6 +113,11 @@ export const meetingFromRow = (row: AnyRow, index = 0): Meeting => {
     status: normalizeMeetingStatus(firstText(row, ["status", "meeting_status"])),
     department: relatedText(row, "departments", ["name", "code"]) || firstText(row, ["department", "department_name", "department_id", "dept"]) || "Department",
     location: firstText(row, ["location", "venue", "room", "meeting_link"]) || "TBA",
+    meetingLink: firstText(row, ["meeting_link", "meet_link", "google_meet_link", "hangout_link"]) || undefined,
+    calendarLink: firstText(row, ["calendar_link", "html_link", "google_calendar_link"]) || undefined,
+    googleEventId: firstText(row, ["google_event_id", "calendar_event_id"]) || undefined,
+    agenda: firstText(row, ["agenda", "description", "notes"]) || undefined,
+    attendeeEmails,
   };
 };
 

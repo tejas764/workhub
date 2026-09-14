@@ -1,25 +1,56 @@
-import { createClient } from "@/lib/supabase-client";
-import { getBackendTable } from "@/services/backend-data.service";
+import type { BackendRow } from "@/services/backend-data.service";
+
+export type CreateMeetingInput = {
+  title: string;
+  date: string;
+  time: string;
+  durationMinutes: number;
+  departmentId: string;
+  departmentName?: string;
+  attendeeEmails: string[];
+  agenda?: string;
+  location?: string;
+  createGoogleMeet?: boolean;
+  timeZone?: string;
+};
 
 export async function getMeetings() {
-  return getBackendTable("meetings");
+  const response = await fetch("/api/meetings", { cache: "no-store" });
+  const payload = await response.json();
+
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error ?? "Unable to load meetings.");
+  }
+
+  return Array.isArray(payload.data) ? payload.data as BackendRow[] : [];
 }
 
-export async function createMeeting(
-  meeting: {
-    title: string;
-    meeting_date: string;
-    department_id: string;
+export async function createMeeting(meeting: CreateMeetingInput) {
+  const response = await fetch("/api/meetings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(meeting),
+  });
+  const payload = await response.json();
+
+  if (!response.ok || payload.error) {
+    const error = new Error(payload.error ?? "Unable to schedule meeting.") as Error & {
+      needsGoogleAuth?: boolean;
+    };
+    error.needsGoogleAuth = Boolean(payload.needsGoogleAuth);
+    throw error;
   }
-) {
-  const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from("meetings")
-    .insert([meeting])
-    .select();
+  return payload.data as BackendRow;
+}
 
-  if (error) throw error;
+export async function authorizeGoogleCalendar() {
+  window.location.assign("/api/google/connect?next=/meetings");
+}
 
-  return data;
+export async function getGoogleCalendarStatus() {
+  const response = await fetch("/api/google/status", { cache: "no-store" });
+  const payload = await response.json();
+
+  return Boolean(response.ok && payload.connected);
 }

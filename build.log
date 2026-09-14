@@ -1,0 +1,55 @@
+
+> @figma/my-make-file@0.0.1 build
+> next build
+
+  ▲ Next.js 14.2.15
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+API key should be set when using the Gemini API.
+API key should be set when using the Gemini API.
+   Generating static pages (0/17) ...
+   Generating static pages (4/17) 
+   Generating static pages (8/17) 
+   Generating static pages (12/17) 
+ ✓ Generating static pages (17/17)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    142 B           301 kB
+├ ○ /_not-found                          876 B          88.3 kB
+├ ○ /ai-knowledge                        142 B           301 kB
+├ ○ /announcements                       141 B           301 kB
+├ ƒ /api/ai/chat                         0 B                0 B
+├ ƒ /api/backend-data                    0 B                0 B
+├ ƒ /api/documents/upload                0 B                0 B
+├ ƒ /api/google/callback                 0 B                0 B
+├ ƒ /api/google/connect                  0 B                0 B
+├ ƒ /api/google/status                   0 B                0 B
+├ ƒ /api/ingest                          0 B                0 B
+├ ƒ /api/meetings                        0 B                0 B
+├ ƒ /api/tasks                           0 B                0 B
+├ ƒ /auth/callback                       0 B                0 B
+├ ○ /department                          142 B           301 kB
+├ ○ /documents                           142 B           301 kB
+├ ○ /faculty                             142 B           301 kB
+├ ○ /help                                142 B           301 kB
+├ ○ /meetings                            142 B           301 kB
+├ ○ /notifications                       142 B           301 kB
+├ ○ /profile                             142 B           301 kB
+├ ○ /reports                             142 B           301 kB
+├ ○ /settings                            142 B           301 kB
+└ ○ /tasks                               142 B           301 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/117-e2502dc0e70f96f3.js       31.8 kB
+  ├ chunks/fd9d1056-49a749484584f0e1.js  53.6 kB
+  └ other shared chunks (total)          2 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

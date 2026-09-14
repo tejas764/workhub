@@ -7,6 +7,7 @@ export const BREADCRUMBS: Record<AppPage, string[]> = {
   meetings: ["Home", "Meetings"],
   documents: ["Home", "Documents"],
   tasks: ["Home", "Tasks"],
+  google: ["Home", "Google"],
   "ai-knowledge": ["Home", "AI Knowledge"],
   reports: ["Home", "Reports"],
   department: ["Home", "Department"],
