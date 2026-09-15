@@ -26,9 +26,5 @@ export async function downloadPdf(path: string) {
 export async function readPdf(path: string) {
   const buffer = await downloadPdf(path);
 
-  const text = await extractPdfText(buffer);
-
-    console.log(text);
-
-    return text;
+  return extractPdfText(buffer);
 }

@@ -4,6 +4,21 @@ export async function getDocuments() {
   return getBackendTable("documents");
 }
 
+const documentViewPath = (documentId: string) =>
+  `/api/documents/${encodeURIComponent(documentId)}/view`;
+
+export function getDocumentViewUrl(documentId: string) {
+  return documentViewPath(documentId);
+}
+
+export function getDocumentMetadataUrl(documentId: string) {
+  return `${documentViewPath(documentId)}?metadata=1`;
+}
+
+export function getDocumentDownloadUrl(documentId: string) {
+  return `${documentViewPath(documentId)}?download=1`;
+}
+
 export async function uploadDocument(
   file: File,
   metadata: {

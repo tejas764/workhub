@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { ingestDocument } from "@/lib/ingestion";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ const documentTypeFromName = (name: string, mimeType: string) => {
   if (mimeType.startsWith("image/")) return "IMAGE";
   return "Document";
 };
+
+const isPdf = (file: File) =>
+  file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -131,7 +135,43 @@ export async function POST(request: NextRequest) {
       throw new Error(`${insertError.message}${cleanupMessage}`);
     }
 
-    return NextResponse.json({ data });
+    if (!isPdf(file)) {
+      return NextResponse.json({
+        data,
+        ingestion: {
+          status: "skipped",
+          reason: "Automatic ingestion is currently available for PDF documents only.",
+        },
+      });
+    }
+
+    try {
+      const ingestion = await ingestDocument({
+        documentId: data.id,
+        filePath,
+        title: data.title,
+        departmentId,
+      });
+
+      return NextResponse.json({
+        data,
+        ingestion: { status: "completed", ...ingestion },
+      });
+    } catch (ingestionError) {
+      console.error("Document ingestion failed:", ingestionError);
+      return NextResponse.json(
+        {
+          error: "Document was uploaded, but automatic PDF ingestion failed.",
+          documentId: data.id,
+          storagePath: filePath,
+          ingestion: {
+            status: "failed",
+            message: ingestionError instanceof Error ? ingestionError.message : "Unknown ingestion error.",
+          },
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Document upload failed:", error);
     return NextResponse.json(

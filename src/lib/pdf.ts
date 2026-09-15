@@ -44,3 +44,16 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
     pdfParser.parseBuffer(buffer);
   });
 }
+
+export async function getPdfPageCount(buffer: Buffer): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
+
+    pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData));
+    pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+      resolve(Array.isArray(pdfData?.Pages) ? pdfData.Pages.length : 0);
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
+}

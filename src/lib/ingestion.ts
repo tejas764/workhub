@@ -2,57 +2,67 @@ import { createServiceSupabaseClient, readPdf } from "./ingest";
 import { chunkText } from "./chunker";
 import { generateEmbedding } from "./embedding";
 
-export async function ingestDocument(
-  filePath: string,
-  title: string,
-  departmentId: string
-) {
+type IngestDocumentInput = {
+  documentId: string;
+  filePath: string;
+  title: string;
+  departmentId: string;
+};
+
+export async function ingestDocument({
+  documentId,
+  filePath,
+  title,
+  departmentId,
+}: IngestDocumentInput) {
   const supabase = createServiceSupabaseClient();
-  const documentId = crypto.randomUUID();
-
   const text = await readPdf(filePath);
+  const chunks = chunkText(text);
 
-  
-  // Delete existing chunks for this document
+  if (!chunks.length) {
+    throw new Error("No extractable text was found in this PDF.");
+  }
+
+  // Generate every embedding before replacing existing chunks, so a Gemini
+  // failure does not remove a previously successful ingestion.
+  const rows = [];
+
+  for (const chunk of chunks) {
+    rows.push({
+      source: "documents",
+      source_id: documentId,
+      title,
+      content: chunk.content,
+      ai_summary: null,
+      department_id: departmentId,
+      embedding: await generateEmbedding(chunk.content),
+      chunk_index: chunk.chunkIndex,
+      metadata: { filePath },
+    });
+  }
+
+  // source_id is the documents.id UUID. Reprocessing this document replaces
+  // its old chunks rather than appending duplicates.
   const { error: deleteError } = await supabase
     .from("knowledge_items")
     .delete()
     .eq("source", "documents")
-    .contains("metadata", { filePath });
+    .eq("source_id", documentId);
 
-    if (deleteError) {
-    throw deleteError;
-    }
-  
-  const chunks = chunkText(text);
+  if (deleteError) throw deleteError;
 
-  for (const chunk of chunks) {
-    console.log(
-      `Embedding ${chunk.chunkIndex + 1}/${chunks.length}`
-    );
+  const { error: insertError } = await supabase
+    .from("knowledge_items")
+    .insert(rows);
 
-    const embedding = await generateEmbedding(chunk.content);
+  if (insertError) throw insertError;
 
-    const { error } = await supabase
-      .from("knowledge_items")
-      .insert({
-        source: "documents",
-        source_id: documentId,
-        title,
-        content: chunk.content,
-        ai_summary: null,
-        department_id: departmentId,
-        embedding,
-        chunk_index: chunk.chunkIndex,
-        metadata: {
-          filePath,
-        },
-      });
+  const { error: documentUpdateError } = await supabase
+    .from("documents")
+    .update({ extracted_text: text, updated_at: new Date().toISOString() })
+    .eq("id", documentId);
 
-    if (error) {
-      throw error;
-    }
-  }
+  if (documentUpdateError) throw documentUpdateError;
 
   return {
     inserted: chunks.length,
