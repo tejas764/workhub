@@ -1,4 +1,4 @@
-import { createServiceSupabaseClient, readPdf } from "./ingest";
+import { createServiceSupabaseClient, readPdfPages } from "./ingest";
 import { chunkText } from "./chunker";
 import { generateEmbedding } from "./embedding";
 
@@ -16,8 +16,12 @@ export async function ingestDocument({
   departmentId,
 }: IngestDocumentInput) {
   const supabase = createServiceSupabaseClient();
-  const text = await readPdf(filePath);
-  const chunks = chunkText(text);
+  const pages = await readPdfPages(filePath);
+  const text = pages.map(page => page.text).filter(Boolean).join("\n\n");
+  const chunks = pages.flatMap(page => chunkText(page.text).map(chunk => ({
+    ...chunk,
+    pageNumber: page.pageNumber,
+  }))).map((chunk, chunkIndex) => ({ ...chunk, chunkIndex }));
 
   if (!chunks.length) {
     throw new Error("No extractable text was found in this PDF.");
@@ -37,7 +41,7 @@ export async function ingestDocument({
       department_id: departmentId,
       embedding: await generateEmbedding(chunk.content),
       chunk_index: chunk.chunkIndex,
-      metadata: { filePath },
+      metadata: { filePath, pageNumber: chunk.pageNumber },
     });
   }
 

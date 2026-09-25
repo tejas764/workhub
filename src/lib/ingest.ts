@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { extractPdfText } from "./pdf";
+import { extractPdfPages, extractPdfText } from "./pdf";
 
 export function createServiceSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -27,4 +27,9 @@ export async function readPdf(path: string) {
   const buffer = await downloadPdf(path);
 
   return extractPdfText(buffer);
+}
+
+export async function readPdfPages(path: string) {
+  const buffer = await downloadPdf(path);
+  return extractPdfPages(buffer);
 }

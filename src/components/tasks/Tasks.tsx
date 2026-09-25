@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Send,
+  ChevronDown,
 } from "lucide-react";
 import type { FacultyMember, Role, TaskItem } from "@/types";
 import type { TaskMutation } from "@/services/task.service";
@@ -86,6 +87,7 @@ export function TasksPage({
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [activeStatusDropdown, setActiveStatusDropdown] = useState<string | number | null>(null);
 
   const canCreate = role !== "faculty";
   const tabs = role === "faculty" ? ["My Tasks"] : ["My Tasks", "Department Tasks"];
@@ -175,15 +177,24 @@ export function TasksPage({
     }
   };
 
+  const handleInlineStatusUpdate = async (task: TaskItem, newStatus: TaskStatus) => {
+    if (!task.assigneeId || !task.departmentId) return;
+    try {
+      await onUpdateTask?.(String(task.id), {
+        title: task.title,
+        assignedTo: task.assigneeId,
+        dueDate: task.dueDateValue ?? null,
+        status: newStatus,
+        departmentId: task.departmentId,
+      });
+    } catch (err) {
+      console.error("Failed to update status", err);
+    }
+  };
+
   const updateSelectedStatus = async (status: TaskStatus) => {
     if (!selected || !selected.assigneeId || !selected.departmentId) return;
-    await onUpdateTask?.(String(selected.id), {
-      title: selected.title,
-      assignedTo: selected.assigneeId,
-      dueDate: selected.dueDateValue ?? null,
-      status,
-      departmentId: selected.departmentId,
-    });
+    await handleInlineStatusUpdate(selected, status);
     setSelected(null);
   };
 
@@ -223,8 +234,15 @@ export function TasksPage({
         {visibleTasks.map(t=>(
           <Card key={t.id} className="p-4" onClick={()=>setSelected(t)}>
             <div className="flex items-start gap-4">
-              <div className="mt-0.5 flex-shrink-0">
-                <div className="w-4 h-4 rounded border-2 flex items-center justify-center"
+              <div 
+                className="mt-0.5 flex-shrink-0 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const nextStatus = t.status === "Completed" ? "Pending" : "Completed";
+                  handleInlineStatusUpdate(t, nextStatus);
+                }}
+              >
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors"
                   style={t.status==="Completed"?{background:C.olive300,borderColor:C.olive300}:{borderColor:C.border}}>
                   {t.status==="Completed"&&<CheckCircle size={10} className="text-white" />}
                 </div>
@@ -233,8 +251,50 @@ export function TasksPage({
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-3 mb-1.5">
                   <p className={cn("text-sm font-bold",t.status==="Completed"&&"line-through opacity-40")} style={{color:C.textPrimary}}>{t.title}</p>
-                  <div className="flex items-center gap-2 flex-shrink-0"><PriorityBadge priority={t.priority} /><StatusBadge status={t.status} /></div>
+                  
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <PriorityBadge priority={t.priority} />
+                    
+                    {/* Direct Status Selector */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveStatusDropdown(activeStatusDropdown === t.id ? null : t.id);
+                        }}
+                        className="flex items-center gap-1 focus:outline-none"
+                      >
+                        <StatusBadge status={t.status} />
+                        <ChevronDown size={12} style={{ color: C.textMuted }} />
+                      </button>
+
+                      {activeStatusDropdown === t.id && (
+                        <div 
+                          className="absolute right-0 mt-1 z-30 w-32 bg-white rounded-lg shadow-lg border p-1 text-xs"
+                          style={{ borderColor: C.border }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {validStatuses.map((st) => (
+                            <button
+                              key={st}
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 flex items-center justify-between font-medium"
+                              style={{ color: t.status === st ? C.blue600 : C.textPrimary }}
+                              onClick={() => {
+                                handleInlineStatusUpdate(t, st);
+                                setActiveStatusDropdown(null);
+                              }}
+                            >
+                              <span>{st}</span>
+                              {t.status === st && <span className="text-[10px]">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                
                 <p className="text-xs mb-2 line-clamp-1" style={{color:C.textMuted}}>{t.department}</p>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2"><Avatar name={t.assignee} size="sm" /><span className="text-xs font-semibold" style={{color:C.textSecondary}}>{t.assignee}</span></div>

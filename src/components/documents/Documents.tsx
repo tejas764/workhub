@@ -23,6 +23,7 @@ import { FACULTY_DATA, ANNOUNCEMENTS_DATA, MEETINGS_DATA, DOCUMENTS_DATA, TASKS_
 import { cn, hov, unhov } from "@/lib/ui-utils";
 import { Avatar, Btn, Card, CategoryBadge, ChartCard, Drawer, EmptyState, FileTypeIcon, FilterBar, Input, Modal, NotifIcon, Pagination, PriorityBadge, ProgressBar, SectionHeader, Select, StatCard, StatusBadge, Tabs } from "@/components/ui";
 import { getDocumentDownloadUrl, getDocumentMetadataUrl, getDocumentViewUrl } from "@/services/document.service";
+import type { RagSource } from "@/types/rag";
 
 const documentTypeFromFile = (file: File) => {
   const name = file.name.toLowerCase();
@@ -44,7 +45,8 @@ export function DocumentsPage({ documents = [], loading = false, departmentId, d
   const [view, setView] = useState<"grid"|"list">("grid");
   const [selected, setSelected] = useState<DocItem|null>(null);
   const [aiMsg, setAiMsg] = useState("");
-  const [chat, setChat] = useState<{from:"user"|"ai";text:string}[]>([]);
+  const [chat, setChat] = useState<{from:"user"|"ai";text:string;sources?:RagSource[]}[]>([]);
+  const [documentChatLoading, setDocumentChatLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +57,11 @@ export function DocumentsPage({ documents = [], loading = false, departmentId, d
 
   const isSelectedPdf = selected?.type === "pdf";
   const documentViewUrl = selected ? getDocumentViewUrl(String(selected.id)) : "";
+
+  useEffect(() => {
+    setChat([]);
+    setAiMsg("");
+  }, [selected?.id]);
 
   useEffect(() => {
     if (!selected || !isSelectedPdf) return;
@@ -114,6 +121,30 @@ export function DocumentsPage({ documents = [], loading = false, departmentId, d
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const sendDocumentMessage = async () => {
+    const question = aiMsg.trim();
+    if (!question || !selected || documentChatLoading) return;
+    const nextChat = [...chat, { from: "user" as const, text: question }];
+    setChat([...nextChat, { from: "ai", text: "Searching this document…" }]);
+    setAiMsg("");
+    setDocumentChatLoading(true);
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextChat, documentId: String(selected.id) }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Unable to answer this question.");
+      const sources = Array.isArray(payload.sources) ? payload.sources as RagSource[] : [];
+      setChat([...nextChat, { from: "ai", text: payload.answer, sources }]);
+    } catch (error) {
+      setChat([...nextChat, { from: "ai", text: error instanceof Error ? `AI error: ${error.message}` : "AI error: Unable to answer this question." }]);
+    } finally {
+      setDocumentChatLoading(false);
     }
   };
 
@@ -272,14 +303,15 @@ export function DocumentsPage({ documents = [], loading = false, departmentId, d
                   <div key={i} className={cn("text-xs rounded-xl px-3 py-2 max-w-[90%]",m.from==="user"?"ml-auto":"border")}
                     style={m.from==="user"?{background:C.blue500,color:"#fff"}:{background:C.bg,borderColor:C.border,color:C.textPrimary}}>
                     {m.text}
+                    {m.from === "ai" && m.sources?.map(source => <div key={source.knowledgeItemId} className="mt-2 border-t pt-2" style={{borderColor:C.border}}><p className="font-bold">📄 {source.title}</p><p style={{color:C.textMuted}}>{source.pageNumber ? `Page ${source.pageNumber}` : `Chunk ${source.chunkIndex}`} · {Math.round(source.similarity * 100)}% relevance</p><p className="mt-1 line-clamp-2" style={{color:C.textSecondary}}>{source.excerpt}</p></div>)}
                   </div>
                 ))}
               </div>
               <div className="flex gap-2">
                 <input value={aiMsg} onChange={e=>setAiMsg(e.target.value)} placeholder="Ask a question..."
-                  onKeyDown={e=>{if(e.key==="Enter"&&aiMsg.trim()){setChat(p=>[...p,{from:"user",text:aiMsg},{from:"ai",text:"Based on the document content, this relates to the updated curriculum structure for the upcoming academic year."}]);setAiMsg("");}}}
+                  onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void sendDocumentMessage();}}}
                   className="flex-1 text-xs border rounded-[10px] px-3 py-2 outline-none" style={{borderColor:C.border,background:C.bg}} />
-                <button className="w-8 h-8 rounded-[10px] flex items-center justify-center" style={{background:C.blue200}}>
+                <button onClick={()=>void sendDocumentMessage()} disabled={documentChatLoading} className="w-8 h-8 rounded-[10px] flex items-center justify-center disabled:opacity-60" style={{background:C.blue200}}>
                   <Send size={13} className="text-white" />
                 </button>
               </div>
