@@ -108,8 +108,8 @@ export function Sidebar({ role, page, onPage, collapsed, onCollapse, onRoleChang
       {!collapsed && (
 
         <div className="px-3 pt-3 pb-2 relative">
-            {/*  */}
-          <button onClick={()=>setShowRoleMenu(!showRoleMenu)}
+            {/* onClick={()=>setShowRoleMenu(!showRoleMenu)} */}
+          <button 
 
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border"
 
