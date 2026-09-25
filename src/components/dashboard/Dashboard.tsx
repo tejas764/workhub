@@ -2,15 +2,14 @@
 import {
   LayoutDashboard, Users, Bell, FileText, CheckSquare, Brain,
   BarChart2, Building2, Settings, HelpCircle, Megaphone, Video,
-  BookOpen,
-  ChevronLeft, ChevronRight, Search, Plus, Download, Upload,
+  BookOpen, ChevronLeft, ChevronRight, Search, Plus, Download, Upload,
   Eye, Trash2, MoreHorizontal, X, Menu, Lock, Calendar,
   Pin, Paperclip, MessageSquare, ChevronDown, LogOut, User,
   Shield, Send, Bot, ExternalLink, SortAsc, CheckCircle,
   GraduationCap, Mail, Phone, MapPin, Key, EyeOff, ArrowRight,
   UserCheck, Sparkles, FileUp, File, RefreshCw, Home, Pencil,
   List, Award, SlidersHorizontal, LayoutGrid, Layers,
-  FolderOpen, Hash,
+  FolderOpen, Hash, Clock, AlertCircle, ArrowUpRight, CheckCircle2,
 } from "lucide-react";
 import {
   BarChart as RBar, Bar, LineChart as RLine, Line,
@@ -346,9 +345,57 @@ export function HODDashboard({
 
 
 
-// â”€â”€â”€ Coordinator Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Coordinator Dashboard ───────────────────────────────────────────────────
 
 export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
+  const currentDate = new Date();
+  
+  const todayDateString = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(currentDate);
+
+  const todayShortDate = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  }).format(currentDate);
+
+  const todayScheduleItems = [
+    { time: "09:00 AM", title: "Faculty Sync — Quick Standup", type: "meeting", done: true, priority: "normal" },
+    { time: "10:30 AM", title: "Review NAAC Document Submissions", type: "task", done: false, priority: "high" },
+    { time: "02:00 PM", title: "Research Committee Meeting", type: "meeting", done: false, priority: "normal" },
+    { time: "04:00 PM", title: "Submit Q2 Performance Reports", type: "task", done: false, priority: "urgent" },
+  ];
+
+  const aiRecommendations = [
+    {
+      id: 1,
+      title: "2 High-Priority Schedule Tasks",
+      desc: "NAAC Docs & Q2 Reports are due today. Prioritize completing NAAC review first.",
+      tag: "Schedule Risk",
+      type: "warning",
+      action: "Review Tasks"
+    },
+    {
+      id: 2,
+      title: "Meeting Conflict Detected",
+      desc: "Research Committee meeting overlaps with 3 faculty office hours at 02:00 PM.",
+      tag: "Conflict",
+      type: "info",
+      action: "Reschedule"
+    },
+    {
+      id: 3,
+      title: "5 Pending Documents AI Summary",
+      desc: "Faculty uploads are ready for quick automated review.",
+      tag: "Automation",
+      type: "success",
+      action: "View Docs"
+    }
+  ];
 
   return (
 
@@ -360,7 +407,7 @@ export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:App
 
           <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.department} · Department Coordinator</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>{todayDateString} · {currentFaculty.department} · Department Coordinator</p>
 
         </div>
 
@@ -388,36 +435,46 @@ export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:App
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        <Card className="p-5">
+        <Card className="p-5 flex flex-col justify-between">
 
-          <SectionHeader title="Today's Schedule" subtitle="Monday, June 30" />
+          <div>
+            <SectionHeader title="Today's Schedule" subtitle={todayShortDate} />
 
-          <div className="space-y-3">
+            <div className="space-y-3 mt-4">
 
-            {[
+              {todayScheduleItems.map((item,i)=>(
 
-              {time:"09:00",title:"Faculty Sync â€” Quick Standup",         type:"meeting",done:true},
+                <div key={i} className={cn("flex gap-3 items-center p-2.5 rounded-xl transition-all border", item.done ? "bg-slate-50 border-transparent opacity-50" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm")}>
 
-              {time:"10:30",title:"Review NAAC Document Submissions",     type:"task",   done:false},
+                  <span className="text-[11px] font-mono font-bold w-16 flex-shrink-0 px-2 py-1 rounded-md text-center" style={{background: item.done ? C.bg : C.blue50, color: item.done ? C.textMuted : C.blue600}}>
+                    {item.time}
+                  </span>
 
-              {time:"14:00",title:"Research Committee Meeting",           type:"meeting",done:false},
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background: item.done ? C.textMuted : item.type==="meeting" ? C.blue200 : C.olive300}} />
 
-              {time:"16:00",title:"Submit Q2 Performance Reports",        type:"task",   done:false},
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-xs font-semibold truncate", item.done && "line-through")} style={{color: C.textPrimary}}>{item.title}</p>
+                    <span className="text-[10px] capitalize" style={{color: C.textMuted}}>{item.type}</span>
+                  </div>
 
-            ].map((item,i)=>(
+                  {item.done ? (
+                    <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
+                  ) : item.priority === "urgent" ? (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-red-600 bg-red-50 border border-red-100 flex-shrink-0">Urgent</span>
+                  ) : null}
 
-              <div key={i} className={cn("flex gap-3 items-start pb-3 border-b last:border-0 last:pb-0",item.done&&"opacity-40")} style={{borderColor:C.bg}}>
+                </div>
 
-                <span className="text-xs font-mono pt-0.5 w-12 flex-shrink-0" style={{color:C.textMuted}}>{item.time}</span>
+              ))}
 
-                <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background:item.type==="meeting"?C.blue200:C.olive300}} />
+            </div>
+          </div>
 
-                <p className={cn("text-xs font-semibold",item.done&&"line-through")} style={{color:C.textPrimary}}>{item.title}</p>
-
-              </div>
-
-            ))}
-
+          <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{borderColor: C.border}}>
+            <span className="text-slate-500 font-medium">4 items total</span>
+            <button onClick={() => onPage("tasks")} className="font-bold flex items-center gap-1 hover:underline" style={{color: C.blue200}}>
+              Manage Agenda <ArrowRight size={12} />
+            </button>
           </div>
 
         </Card>
@@ -478,7 +535,7 @@ export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:App
 
                     <p className="text-xs font-bold truncate" style={{color:C.textPrimary}}>{d.title}</p>
 
-                    <p className="text-[10px]" style={{color:C.textMuted}}>{d.size} Â· {d.date}</p>
+                    <p className="text-[10px]" style={{color:C.textMuted}}>{d.size} · {d.date}</p>
 
                   </div>
 
@@ -490,22 +547,45 @@ export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:App
 
           </Card>
 
-          <div className="rounded-2xl p-4 border" style={{background:C.sky50,borderColor:C.sky100}}>
-
-            <div className="flex items-center gap-2 mb-2">
-
-              <Bot size={13} style={{color:C.sky300}} />
-
-              <p className="text-xs font-bold" style={{color:C.sky500}}>AI Recommendations</p>
-
+          <div className="rounded-2xl p-4.5 border shadow-sm transition-all relative overflow-hidden" style={{background: "linear-gradient(180deg, #F0F7FF 0%, #E6F0FA 100%)", borderColor: "#BDD8F8"}}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-blue-600 text-white shadow-sm">
+                  <Sparkles size={14} />
+                </div>
+                <div>
+                  <p className="text-xs font-black tracking-wide uppercase" style={{color: C.blue600}}>AI Schedule Advisor</p>
+                  <p className="text-[10px] text-slate-500">Smart schedule optimization</p>
+                </div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                Live Analysis
+              </span>
             </div>
 
-            {["2 tasks nearing deadlines","Reschedule July 5 meeting â€” 3 conflicts","5 documents pending AI summary"].map((r,i)=>(
-
-              <p key={i} className="text-xs mt-1" style={{color:C.sky400}}>Â· {r}</p>
-
-            ))}
-
+            <div className="space-y-2.5">
+              {aiRecommendations.map((item) => (
+                <div key={item.id} className="p-2.5 rounded-xl bg-white/90 border border-blue-100/80 shadow-xs hover:border-blue-200 transition-all">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-xs font-bold leading-snug" style={{color: C.textPrimary}}>{item.title}</p>
+                    <span className={cn(
+                      "text-[9px] font-bold px-1.5 py-0.5 rounded flex-shrink-0",
+                      item.type === "warning" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                      item.type === "info" ? "bg-sky-50 text-sky-700 border border-sky-200" :
+                      "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    )}>
+                      {item.tag}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed mb-2" style={{color: C.textSecondary}}>{item.desc}</p>
+                  <div className="flex justify-end">
+                    <button onClick={()=>onPage("tasks")} className="text-[10px] font-bold flex items-center gap-1 hover:underline" style={{color: C.blue500}}>
+                      {item.action} <ArrowUpRight size={10} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
@@ -520,7 +600,7 @@ export function CoordinatorDashboard({ onPage, currentFaculty }: { onPage:(p:App
 
 
 
-// â”€â”€â”€ Faculty Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Faculty Dashboard ───────────────────────────────────────────────────────
 
 export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage)=>void; currentFaculty:FacultyMember }) {
 
@@ -534,7 +614,7 @@ export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage
 
           <h1 className="text-2xl font-black" style={{color:C.blue600}}>Good morning, {currentFaculty.name}</h1>
 
-          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>Tuesday, 07 July 2026 · {currentFaculty.role} · {currentFaculty.department}</p>
+          <p className="text-sm mt-0.5" style={{color:C.textSecondary}}>{new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date())} · {currentFaculty.role} · {currentFaculty.department}</p>
 
         </div>
 
@@ -622,7 +702,7 @@ export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage
 
                     <p className="text-xs font-bold line-clamp-1" style={{color:C.textPrimary}}>{m.title}</p>
 
-                    <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} Â· {m.location}</p>
+                    <p className="text-[10px]" style={{color:C.textMuted}}>{m.time} · {m.location}</p>
 
                   </div>
 
@@ -656,7 +736,7 @@ export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage
 
                   </div>
 
-                  <p className="text-[10px] mt-0.5" style={{color:C.textMuted}}>{a.date} Â· {a.category}</p>
+                  <p className="text-[10px] mt-0.5" style={{color:C.textMuted}}>{a.date} · {a.category}</p>
 
                 </div>
 
@@ -675,11 +755,3 @@ export function FacultyDashboard({ onPage, currentFaculty }: { onPage:(p:AppPage
   );
 
 }
-
-
-
-// â”€â”€â”€ Faculty Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-
-
-
