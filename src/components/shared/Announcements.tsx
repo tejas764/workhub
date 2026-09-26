@@ -27,10 +27,12 @@ export function AnnouncementsPage({
   role,
   announcements = [],
   loading = false,
+  onCreateAnnouncement,
 }: {
-  role:Role;
+  role: Role;
   announcements?: Announcement[];
   loading?: boolean;
+  onCreateAnnouncement?: (newAnnouncement: Announcement) => void;
 }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All Categories");
@@ -40,6 +42,9 @@ export function AnnouncementsPage({
   const [showCalendar, setShowCalendar] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Local state to maintain newly created items directly in this component
+  const [localAnnouncements, setLocalAnnouncements] = useState<Announcement[]>([]);
 
   // Create Form State
   const [newTitle, setNewTitle] = useState("");
@@ -51,11 +56,37 @@ export function AnnouncementsPage({
   const canCreate = role !== "faculty";
 
   const handleCreateSubmit = () => {
+    if (!newTitle.trim()) return;
+
+    const newAnnouncementItem: Announcement = {
+      id: Date.now().toString(),
+      title: newTitle,
+      category: newCategory,
+      summary: newSummary || newTitle,
+      department: newDepartment,
+      pinned: isPinned,
+      date: new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      postedBy: "Dept. Coordinator",
+      hasAttachment: false,
+    };
+
+    setLocalAnnouncements((prev) => [newAnnouncementItem, ...prev]);
+
+    if (onCreateAnnouncement) {
+      onCreateAnnouncement(newAnnouncementItem);
+    }
+
     setShowCreateModal(false);
     setNewTitle("");
     setNewSummary("");
     setIsPinned(false);
   };
+
+  const displayedAnnouncements = [...localAnnouncements, ...announcements];
 
   return (
     <div className="p-6">
@@ -145,7 +176,7 @@ export function AnnouncementsPage({
       </FilterBar>
 
       <div className={cn(view==="grid"?"grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4":"space-y-3")}>
-        {announcements.map(a=>(
+        {displayedAnnouncements.map(a=>(
           <Card key={a.id} className="p-5" onClick={()=>setSelected(a)}>
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
@@ -175,7 +206,7 @@ export function AnnouncementsPage({
           </Card>
         ))}
 
-        {!loading && announcements.length===0 && (
+        {!loading && displayedAnnouncements.length===0 && (
           <div className={cn(view==="grid" ? "col-span-full" : "")}>
             <EmptyState icon={Megaphone} title="No announcements found" description="Announcements from Supabase will appear here once records are available to this user." />
           </div>

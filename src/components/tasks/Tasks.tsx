@@ -93,6 +93,17 @@ export function TasksPage({
   const tabs = role === "faculty" ? ["My Tasks"] : ["My Tasks", "Department Tasks"];
   const currentFacultyId = currentFaculty?.id ? String(currentFaculty.id) : "";
 
+  // Map each faculty member to a unique string format: "Name (ID)"
+  const facultyOptions = useMemo(() => {
+    return facultyMembers.map((f) => `${f.name} (${f.id})`);
+  }, [facultyMembers]);
+
+  // Derive display string for selected assignee
+  const selectedAssigneeString = useMemo(() => {
+    const found = facultyMembers.find((f) => String(f.id) === form.assignedTo);
+    return found ? `${found.name} (${found.id})` : form.assignedTo;
+  }, [facultyMembers, form.assignedTo]);
+
   const visibleTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -100,7 +111,7 @@ export function TasksPage({
       const isMine = currentFacultyId && String(task.assigneeId) === currentFacultyId;
       const tabMatches = role === "faculty" || tab === "Department Tasks" || isMine;
       const searchMatches = !q || [task.title, task.assignee, task.department, task.description]
-        .some((value) => value.toLowerCase().includes(q));
+        .some((value) => value?.toLowerCase().includes(q));
       const statusMatches = statusFilter === "All Status" || task.status === statusFilter;
       const assigneeMatches = assigneeFilter === "All Assignees" || task.assignee === assigneeFilter;
 
@@ -342,9 +353,14 @@ export function TasksPage({
               <label className="text-xs font-bold block mb-1.5" style={{color:C.textPrimary}}>Assignee</label>
               <Select
                 className="w-full"
-                value={form.assignedTo}
-                onChange={(assignedTo)=>setForm(p=>({...p,assignedTo}))}
-                options={facultyMembers.length ? facultyMembers.map(f=>String(f.id)) : [""]}
+                value={selectedAssigneeString}
+                onChange={(selectedStr) => {
+                  // Extract the ID inside the parentheses e.g. "Name (id)" -> "id"
+                  const match = selectedStr.match(/\(([^)]+)\)$/);
+                  const selectedId = match ? match[1] : selectedStr;
+                  setForm((p) => ({ ...p, assignedTo: selectedId }));
+                }}
+                options={facultyOptions.length ? facultyOptions : ["No faculty members"]}
               />
               <p className="text-[11px] mt-1.5" style={{color:C.textMuted}}>
                 {selectedFaculty ? `${selectedFaculty.name} - ${selectedFaculty.department}` : "Select a faculty member"}
