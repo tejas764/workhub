@@ -18,7 +18,7 @@
 
 Built as a **Next.js + TypeScript** application with **Supabase** for authentication and data services, WorkHub is designed to make departmental information easier to organize, discover, and act on.
 
-> **Repository guide:** The `develop` branch contains the application source. The previous `main` README described a broader multi-platform productivity concept; this README documents the academic-department application visible in `develop`.
+> **Repository guide:** `develop` is the default branch and contains the academic-department application.
 
 ## 🚀 Features
 
@@ -34,6 +34,15 @@ Built as a **Next.js + TypeScript** application with **Supabase** for authentica
 | 🔔 **Supporting modules** | Notifications, reports, profile, settings, and help sections |
 
 *Feature availability depends on configured Supabase/Google/AI credentials, database setup, role permissions, and the selected deployment. This overview describes the present codebase, not a guarantee that every integration works in every environment.*
+
+## Documentation
+
+| Guide | Purpose |
+| --- | --- |
+| [Contributing](CONTRIBUTING.md) | Development workflow and contribution guidance |
+| [Security](SECURITY.md) | Security reporting and handling sensitive data |
+| [Code of conduct](CODE_OF_CONDUCT.md) | Collaboration expectations |
+| [Attributions](ATTRIBUTIONS.md) | Existing component and asset credits |
 
 ## 🧰 Engineering stack
 
